@@ -1,0 +1,2745 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Creative Collection - 캡스톤 프로젝트 아카이브</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff4d00">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Creative Collection">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+/* ===== CSS Variables ===== */
+:root{
+  --bg:#fafafa;--card-bg:#fff;--text:#222;--text-secondary:#888;--border:#e5e7eb;
+  --modal-bg:#fff;--input-bg:#fff;--stats-bg:#fff;--stats-border:#e5e7eb;
+  --footer-bg:#fff;--footer-border:#f0f0f0;--comment-border:#f0f0f0;--comment-item-border:#f5f5f5;
+  --comment-body:#555;--comment-author:#333;--comment-time:#bbb;--comment-empty:#bbb;
+  --hover-bg:#f3f4f6;--hover-bg-dark:#e5e7eb;--filter-bg:#fff;--filter-text:#555;
+  --card-title:#111;--card-desc-title:#222;--badge-class-bg:#f3f4f6;--badge-class-text:#666;
+  --search-bg:#fff;--year-dropdown-bg:#fff;--year-option-text:#333;--year-option-hover:#fff3e0;
+  --year-option-active-bg:#fff8f0;--loading-bg:#fff;--loading-spinner-border:#eee;--loading-text:#888;
+  --video-tab-bg:#f3f4f6;--video-tab-text:#888;--video-tab-hover-bg:#e5e7eb;--video-tab-hover-text:#555;
+  --doc-link-bg:#f3f4f6;--doc-link-text:#555;--doc-link-hover-bg:#e5e7eb;--doc-link-hover-text:#333;
+  --scrollbar-thumb:#ddd;--scrollbar-thumb-hover:#bbb;--modal-close-bg:#f3f4f6;--modal-close-text:#888;
+  --modal-close-hover-bg:#e5e7eb;--modal-close-hover-text:#333;--char-count:#bbb;
+}
+[data-theme="dark"]{
+  --bg:#0f172a;--card-bg:#1e293b;--text:#e2e8f0;--text-secondary:#94a3b8;--border:#334155;
+  --modal-bg:#1e293b;--input-bg:#0f172a;--stats-bg:#1e293b;--stats-border:#334155;
+  --footer-bg:#1e293b;--footer-border:#334155;--comment-border:#334155;--comment-item-border:#334155;
+  --comment-body:#cbd5e1;--comment-author:#e2e8f0;--comment-time:#64748b;--comment-empty:#64748b;
+  --hover-bg:#334155;--hover-bg-dark:#475569;--filter-bg:#1e293b;--filter-text:#94a3b8;
+  --card-title:#f1f5f9;--card-desc-title:#e2e8f0;--badge-class-bg:#334155;--badge-class-text:#94a3b8;
+  --search-bg:#0f172a;--year-dropdown-bg:#1e293b;--year-option-text:#e2e8f0;--year-option-hover:#334155;
+  --year-option-active-bg:#334155;--loading-bg:#0f172a;--loading-spinner-border:#334155;--loading-text:#94a3b8;
+  --video-tab-bg:#334155;--video-tab-text:#94a3b8;--video-tab-hover-bg:#475569;--video-tab-hover-text:#e2e8f0;
+  --doc-link-bg:#334155;--doc-link-text:#94a3b8;--doc-link-hover-bg:#475569;--doc-link-hover-text:#e2e8f0;
+  --scrollbar-thumb:#475569;--scrollbar-thumb-hover:#64748b;--modal-close-bg:#334155;--modal-close-text:#94a3b8;
+  --modal-close-hover-bg:#475569;--modal-close-hover-text:#e2e8f0;--char-count:#64748b;
+}
+
+/* ===== Reset & Base ===== */
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-text-size-adjust:100%;transition:background-color .3s,color .3s}
+a{text-decoration:none;color:inherit}
+button{cursor:pointer;font-family:inherit;border:none;background:none}
+input,textarea{font-family:inherit;font-size:16px!important}
+
+/* ===== Loading Screen ===== */
+.loading-screen{position:fixed;inset:0;background:var(--loading-bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s,visibility .5s}
+.loading-screen.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.loading-spinner{width:48px;height:48px;border:4px solid var(--loading-spinner-border);border-top-color:#ff4d00;border-radius:50%;animation:spin .8s linear infinite}
+.loading-screen p{margin-top:16px;color:var(--loading-text);font-size:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== Header ===== */
+.header{background:linear-gradient(135deg,#ff4d00,#ff8c00);color:#fff;padding:48px 24px 40px;text-align:center;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+.header-content{position:relative;z-index:1;max-width:800px;margin:0 auto}
+.header-logo{font-size:14px;font-weight:600;letter-spacing:3px;text-transform:uppercase;opacity:.9;margin-bottom:8px}
+.header h1{font-size:clamp(28px,5vw,42px);font-weight:800;margin-bottom:8px;text-shadow:0 2px 4px rgba(0,0,0,.1)}
+.header h1 span{display:inline-block;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.header h2{font-size:clamp(14px,2.5vw,18px);font-weight:400;opacity:.9;margin-bottom:24px}
+.header-desc{font-size:14px;opacity:.8;max-width:500px;margin:0 auto 28px;line-height:1.7}
+.header-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.header-btn{padding:10px 22px;border-radius:50px;font-size:14px;font-weight:600;transition:all .25s;display:inline-flex;align-items:center;gap:6px}
+.header-btn.primary{background:#fff;color:#ff4d00}
+.header-btn.primary:hover{background:#fff3;color:#fff;transform:translateY(-2px)}
+.header-btn.secondary{background:rgba(255,255,255,.15);color:#fff;backdrop-filter:blur(4px)}
+.header-btn.secondary:hover{background:rgba(255,255,255,.25);transform:translateY(-2px)}
+
+/* Year Selector */
+.year-selector{position:absolute;top:16px;right:20px;z-index:10}
+.year-btn{background:rgba(255,255,255,.2);color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;backdrop-filter:blur(4px);transition:all .2s}
+.year-btn:hover{background:rgba(255,255,255,.3)}
+.year-dropdown{display:none;position:absolute;right:0;top:110%;background:var(--year-dropdown-bg);border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.15);overflow:hidden;min-width:120px}
+.year-dropdown.show{display:block}
+.year-option{display:block;width:100%;padding:10px 16px;font-size:14px;color:var(--year-option-text);text-align:left;transition:background .15s}
+.year-option:hover{background:var(--year-option-hover)}
+.year-option.active{color:#ff4d00;font-weight:600;background:var(--year-option-active-bg)}
+
+/* ===== Stats Bar ===== */
+.stats-bar{max-width:1200px;margin:-28px auto 0;padding:0 20px;position:relative;z-index:2}
+.stats-inner{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--stats-border);border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08);transition:background-color .3s}
+.stat-item{background:var(--stats-bg);padding:20px 24px;text-align:center;transition:background-color .3s}
+.stat-value{font-size:28px;font-weight:800;color:#ff4d00}
+.stat-label{font-size:12px;color:var(--text-secondary);margin-top:2px;font-weight:500}
+
+/* ===== Main Content ===== */
+.main{max-width:1200px;margin:0 auto;padding:36px 20px 60px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.section-title{font-size:20px;font-weight:700;display:flex;align-items:center;gap:8px}
+.section-title::before{content:'';width:4px;height:22px;background:linear-gradient(135deg,#ff4d00,#ff8c00);border-radius:2px}
+.section-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.search-box{position:relative}
+.search-box input{padding:10px 14px 10px 36px;border:1px solid var(--border);border-radius:10px;font-size:14px;width:220px;background:var(--search-bg);color:var(--text);transition:border .2s,box-shadow .2s,background-color .3s;outline:none}
+.search-box input:focus{border-color:#ff4d00;box-shadow:0 0 0 3px rgba(255,77,0,.1)}
+.search-box::before{content:'🔍';position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px}
+.filter-btn{padding:8px 16px;border-radius:10px;font-size:13px;font-weight:500;background:var(--filter-bg);border:1px solid var(--border);color:var(--filter-text);transition:all .2s}
+.filter-btn:hover,.filter-btn.active{background:#ff4d00;color:#fff;border-color:#ff4d00}
+.shuffle-btn{padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;background:linear-gradient(135deg,#ff4d00,#ff8c00);color:#fff;transition:all .2s}
+.shuffle-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(255,77,0,.3)}
+
+/* ===== Project Grid ===== */
+.project-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:24px}
+
+/* ===== Card ===== */
+.card{background:var(--card-bg);border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);transition:all .3s;position:relative}
+.card:hover{transform:translateY(-4px);box-shadow:0 12px 36px rgba(0,0,0,.12)}
+.card-image{position:relative;height:200px;background:linear-gradient(135deg,#ff6b35,#ff4d00);overflow:hidden;cursor:pointer}
+.card-image img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.card:hover .card-image img{transform:scale(1.05)}
+.card-overlay{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:space-between;padding:12px;pointer-events:none}
+.card-overlay>*{pointer-events:auto}
+.heart-badge,.comment-badge{background:rgba(0,0,0,.5);backdrop-filter:blur(8px);color:#fff;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;transition:all .25s;display:flex;align-items:center;gap:4px;user-select:none}
+.heart-badge:hover{background:rgba(255,77,0,.8);transform:scale(1.05)}
+.heart-badge.liked{background:rgba(255,77,0,.9)}
+.comment-badge:hover{background:rgba(0,0,0,.7);transform:scale(1.05)}
+.card-content{padding:18px 20px 16px}
+.card-title-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.card-team-name{font-size:17px;font-weight:700;color:var(--card-title)}
+.badge{font-size:11px;padding:3px 8px;border-radius:6px;font-weight:600}
+.badge.xcopter{background:#dbeafe;color:#2563eb}
+.badge.vtol{background:#e0f2fe;color:#0284c7}
+.badge.sw{background:#dcfce7;color:#16a34a}
+.badge.hw{background:#fef3c7;color:#d97706}
+.badge.fc{background:#ede9fe;color:#7c3aed}
+.badge.ai{background:#fce7f3;color:#db2777}
+.badge.web{background:#fff7ed;color:#ea580c}
+.badge.app{background:#f0fdf4;color:#15803d}
+.badge.iot{background:#fdf4ff;color:#a21caf}
+.badge.etc{background:#f5f5f5;color:#737373}
+.badge.class-a{background:var(--badge-class-bg);color:var(--badge-class-text)}
+.badge.class-b{background:var(--badge-class-bg);color:var(--badge-class-text)}
+.badge.award-internal{background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;border:1px solid #f59e0b;font-weight:700}
+.badge.award-external{background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1e40af;border:1px solid #3b82f6;font-weight:700}
+[data-theme="dark"] .badge.award-internal{background:linear-gradient(135deg,#78350f,#92400e);color:#fde68a;border-color:#d97706}
+[data-theme="dark"] .badge.award-external{background:linear-gradient(135deg,#1e3a5f,#1e40af);color:#bfdbfe;border-color:#3b82f6}
+/* ===== Digital Badges ===== */
+.digital-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.digital-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid;transition:all .2s}
+.digital-badge.b-cert{background:#fef3c7;color:#92400e;border-color:#fcd34d}
+.digital-badge.b-flight{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
+.digital-badge.b-dev{background:#dcfce7;color:#166534;border-color:#86efac}
+.digital-badge.b-coding{background:#ede9fe;color:#5b21b6;border-color:#c4b5fd}
+.digital-badge.b-design{background:#fce7f3;color:#9d174d;border-color:#f9a8d4}
+.digital-badge.b-3dmap{background:#e0f2fe;color:#075985;border-color:#7dd3fc}
+.digital-badge.b-swarm{background:#fff7ed;color:#9a3412;border-color:#fdba74}
+.digital-badge.b-custom{background:var(--filter-bg);color:var(--text);border-color:var(--border)}
+[data-theme="dark"] .digital-badge.b-cert{background:#78350f;color:#fde68a;border-color:#b45309}
+[data-theme="dark"] .digital-badge.b-flight{background:#1e3a5f;color:#93c5fd;border-color:#2563eb}
+[data-theme="dark"] .digital-badge.b-dev{background:#14532d;color:#86efac;border-color:#16a34a}
+[data-theme="dark"] .digital-badge.b-coding{background:#3b0764;color:#c4b5fd;border-color:#7c3aed}
+[data-theme="dark"] .digital-badge.b-design{background:#500724;color:#f9a8d4;border-color:#db2777}
+[data-theme="dark"] .digital-badge.b-3dmap{background:#0c4a6e;color:#7dd3fc;border-color:#0284c7}
+[data-theme="dark"] .digital-badge.b-swarm{background:#7c2d12;color:#fdba74;border-color:#ea580c}
+.member-badges{display:flex;gap:2px;margin-top:2px;justify-content:center;flex-wrap:wrap;max-width:52px}
+.member-badge-dot{width:6px;height:6px;border-radius:50%}
+
+.card-company{display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:13px;color:var(--text-secondary)}
+.card-company .company-icon{font-size:15px}
+.card-company .company-name{font-weight:600;color:var(--text)}
+
+/* Members Carousel */
+.card-members{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding:4px 0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.card-members::-webkit-scrollbar{display:none}
+.member{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;position:relative}
+.member-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#ff4d00,#ff8c00);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.1);transition:all .25s;overflow:hidden}
+.member-avatar img{width:100%;height:100%;object-fit:cover}
+.member:hover .member-avatar{transform:scale(1.1);box-shadow:0 4px 12px rgba(255,77,0,.3)}
+.member-name{font-size:11px;color:var(--text-secondary);font-weight:500;white-space:nowrap}
+.speech-bubble{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 14px;border-radius:10px;font-size:12px;white-space:nowrap;opacity:0;visibility:hidden;transition:all .25s;pointer-events:none;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.speech-bubble::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#333}
+.member:hover .speech-bubble,.speech-bubble.show{opacity:1;visibility:visible}
+
+/* Card Description */
+.card-desc{margin-bottom:14px}
+.card-desc h4{font-size:15px;font-weight:700;color:var(--card-desc-title);margin-bottom:4px}
+.card-desc p{font-size:13px;color:var(--text-secondary);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* Card Links */
+.card-links{display:flex;gap:8px;flex-wrap:wrap}
+.card-link{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
+.card-link.video{background:#ff4d001a;color:#ff4d00}
+.card-link.video:hover{background:#ff4d00;color:#fff}
+.card-link.site{background:#2563eb1a;color:#2563eb}
+.card-link.site:hover{background:#2563eb;color:#fff}
+.card-link.github{background:#24292e1a;color:#24292e}
+.card-link.github:hover{background:#24292e;color:#fff}
+
+/* Heart Animation */
+.heart-float{position:fixed;pointer-events:none;font-size:24px;z-index:1000;animation:heartFloat 1.5s ease-out forwards}
+@keyframes heartFloat{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-80px) scale(1.5)}}
+
+/* Card Shuffle Animation */
+.card.shuffle-out{animation:shuffleOut .4s ease-in forwards}
+.card.shuffle-in{animation:shuffleIn .4s ease-out forwards}
+@keyframes shuffleOut{to{opacity:0;transform:scale(.9) rotate(2deg)}}
+@keyframes shuffleIn{from{opacity:0;transform:scale(.9) rotate(-2deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+
+/* ===== Modal Base ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);opacity:0;transition:opacity .25s}
+.modal-overlay.show{display:flex;opacity:1}
+.modal{background:var(--modal-bg);border-radius:20px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;transform:translateY(20px);transition:transform .3s,background-color .3s}
+.modal-overlay.show .modal{transform:translateY(0)}
+.modal-close{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;background:var(--modal-close-bg);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--modal-close-text);transition:all .2s;z-index:1}
+.modal-close:hover{background:var(--modal-close-hover-bg);color:var(--modal-close-hover-text)}
+
+/* ===== Comment Modal ===== */
+.comment-modal-header{padding:24px 24px 16px;border-bottom:1px solid var(--comment-border)}
+.comment-modal-header h2{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
+.comment-list{padding:16px 24px;max-height:300px;overflow-y:auto;min-height:60px}
+.comment-list::-webkit-scrollbar{width:4px}
+.comment-list::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:4px}
+.comment-empty{text-align:center;color:var(--comment-empty);font-size:14px;padding:24px 0}
+.comment-item{padding:12px 0;border-bottom:1px solid var(--comment-item-border);position:relative}
+.comment-item:last-child{border-bottom:none}
+.comment-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.comment-author{font-size:14px;font-weight:600;color:var(--comment-author);display:flex;align-items:center;gap:6px}
+.comment-author .special-tag{font-size:10px;background:linear-gradient(135deg,#ff4d00,#ff8c00);color:#fff;padding:2px 6px;border-radius:4px;font-weight:600}
+.comment-time{font-size:11px;color:var(--comment-time)}
+.comment-body{font-size:14px;color:var(--comment-body);line-height:1.6}
+.comment-delete{position:absolute;top:12px;right:0;font-size:14px;color:var(--text-secondary);cursor:pointer;padding:4px;transition:color .2s}
+.comment-delete:hover{color:#ef4444}
+.comment-form{padding:16px 24px 24px;border-top:1px solid var(--comment-border)}
+.comment-form .input-row{display:flex;gap:8px;margin-bottom:10px}
+.comment-input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:10px;outline:none;background:var(--input-bg);color:var(--text);transition:border .2s,background-color .3s}
+.comment-input:focus{border-color:#ff4d00}
+.comment-textarea{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;outline:none;resize:vertical;min-height:70px;background:var(--input-bg);color:var(--text);transition:border .2s,background-color .3s}
+.comment-textarea:focus{border-color:#ff4d00}
+.comment-form-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+.emoji-row{display:flex;gap:4px}
+.emoji-btn{font-size:20px;padding:4px;border-radius:6px;transition:background .15s;cursor:pointer}
+.emoji-btn:hover{background:var(--hover-bg)}
+.char-count{font-size:11px;color:var(--char-count)}
+.comment-submit{padding:10px 24px;border-radius:10px;background:linear-gradient(135deg,#ff4d00,#ff8c00);color:#fff;font-weight:600;font-size:14px;transition:all .2s}
+.comment-submit:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(255,77,0,.3)}
+.comment-submit:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* ===== Video Modal ===== */
+.video-modal-inner{padding:24px}
+.video-tabs{display:flex;gap:8px;margin-bottom:16px}
+.video-tab{padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;background:var(--video-tab-bg);color:var(--video-tab-text);transition:all .2s}
+.video-tab.active{background:linear-gradient(135deg,#ff4d00,#ff8c00);color:#fff}
+.video-tab:hover:not(.active){background:var(--video-tab-hover-bg);color:var(--video-tab-hover-text)}
+.video-container{position:relative;width:100%;padding-bottom:56.25%;border-radius:12px;overflow:hidden;background:#000}
+.video-container iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+.video-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-secondary)}
+.video-placeholder .icon{font-size:48px;margin-bottom:12px}
+.doc-link{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:10px 20px;background:var(--doc-link-bg);border-radius:10px;font-size:13px;font-weight:600;color:var(--doc-link-text);transition:all .2s}
+.doc-link:hover{background:var(--doc-link-hover-bg);color:var(--doc-link-hover-text)}
+
+/* ===== Footer ===== */
+.footer{text-align:center;padding:32px 20px;background:var(--footer-bg);border-top:1px solid var(--footer-border);color:var(--text-secondary);font-size:13px;transition:background-color .3s}
+.footer a{color:#ff4d00;font-weight:600;transition:opacity .2s}
+.footer a:hover{opacity:.7}
+.footer-links{display:flex;gap:16px;justify-content:center;margin-top:8px}
+
+/* ===== Responsive ===== */
+@media(max-width:900px){
+  .project-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .stats-inner{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:600px){
+  .header{padding:36px 16px 32px}
+  .header-actions{flex-direction:column;align-items:stretch}
+  .header-btn{justify-content:center}
+  .project-grid{grid-template-columns:1fr;gap:16px}
+  .stats-inner{grid-template-columns:1fr 1fr}
+  .stat-item{padding:14px 12px}
+  .stat-value{font-size:22px}
+  .section-tools{width:100%}
+  .search-box input{width:100%}
+  .search-box{width:100%}
+  .card-image{height:180px}
+  .year-selector{top:10px;right:12px}
+  .modal{margin:10px;max-height:90vh}
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--scrollbar-thumb-hover)}
+
+/* ===== No Results ===== */
+.no-results{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-secondary)}
+.no-results .icon{font-size:48px;margin-bottom:12px}
+.no-results p{font-size:15px}
+
+/* ===== Theme Toggle ===== */
+.theme-toggle{position:absolute;top:16px;right:80px;z-index:10;background:rgba(255,255,255,.2);color:#fff;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;backdrop-filter:blur(4px);transition:all .2s;cursor:pointer}
+.theme-toggle:hover{background:rgba(255,255,255,.3);transform:scale(1.1)}
+@media(max-width:600px){.theme-toggle{top:10px;right:72px}}
+
+/* ===== DB Connection Indicator ===== */
+.db-status{position:fixed;bottom:24px;left:24px;display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;z-index:998;backdrop-filter:blur(8px);transition:all .3s;cursor:default}
+.db-status.online{background:rgba(22,163,74,.15);color:#16a34a;border:1px solid rgba(22,163,74,.3)}
+.db-status.offline{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+.db-status.connecting{background:rgba(234,179,8,.15);color:#ca8a04;border:1px solid rgba(234,179,8,.3)}
+.db-status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.db-status.online .db-status-dot{background:#16a34a;box-shadow:0 0 6px rgba(22,163,74,.5)}
+.db-status.offline .db-status-dot{background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,.5)}
+.db-status.connecting .db-status-dot{background:#ca8a04;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+[data-theme="dark"] .db-status.online{background:rgba(22,163,74,.2);color:#4ade80}
+[data-theme="dark"] .db-status.offline{background:rgba(239,68,68,.2);color:#f87171}
+[data-theme="dark"] .db-status.connecting{background:rgba(234,179,8,.2);color:#facc15}
+
+/* ===== Card link dark overrides ===== */
+[data-theme="dark"] .card-link.github{background:rgba(255,255,255,.1);color:#e2e8f0}
+[data-theme="dark"] .card-link.github:hover{background:#e2e8f0;color:#0f172a}
+[data-theme="dark"] .speech-bubble{background:#475569}
+[data-theme="dark"] .speech-bubble::after{border-top-color:#475569}
+[data-theme="dark"] .card:hover{box-shadow:0 12px 36px rgba(0,0,0,.3)}
+
+/* ===== Admin Panel ===== */
+.admin-access-btn{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#ff4d00,#ff8c00);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(255,77,0,.35);z-index:999;transition:all .25s;cursor:pointer;border:none}
+.admin-access-btn:hover{transform:scale(1.1) rotate(30deg);box-shadow:0 6px 24px rgba(255,77,0,.5)}
+.admin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);opacity:0;transition:opacity .3s}
+.admin-overlay.show{display:flex;opacity:1}
+.admin-panel{background:var(--card-bg);border-radius:16px;width:100%;max-width:1100px;height:85vh;display:flex;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25);transition:background-color .3s}
+.admin-sidebar{width:260px;background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:background-color .3s,border-color .3s;flex-shrink:0}
+.admin-sidebar-header{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+.admin-sidebar-header h3{font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.admin-sidebar-header p{font-size:12px;color:var(--text-secondary);margin-top:4px}
+.admin-nav{flex:1;padding:12px 10px;overflow-y:auto}
+.admin-nav-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;font-size:14px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all .2s;border:none;background:none;width:100%;text-align:left}
+.admin-nav-item:hover{background:var(--hover-bg);color:var(--text)}
+.admin-nav-item.active{background:linear-gradient(135deg,#ff4d00,#ff8c00);color:#fff;font-weight:600}
+.admin-nav-item .nav-icon{font-size:18px;width:24px;text-align:center}
+.admin-sidebar-footer{padding:12px 10px;border-top:1px solid var(--border)}
+.admin-footer-btn{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;font-size:14px;font-weight:500;color:#ef4444;cursor:pointer;transition:all .2s;border:none;background:none;width:100%}
+.admin-footer-btn:hover{background:#fef2f2}
+[data-theme="dark"] .admin-footer-btn:hover{background:#331111}
+
+/* ===== Student Profile Modal (Main Page) ===== */
+.student-profile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1001;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);opacity:0;transition:opacity .25s}
+.student-profile-overlay.show{display:flex;opacity:1}
+.student-profile-modal{background:var(--modal-bg);border-radius:20px;max-width:440px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;transform:translateY(20px);transition:transform .3s,background-color .3s;padding:28px 24px 24px}
+.student-profile-overlay.show .student-profile-modal{transform:translateY(0)}
+.student-profile-close{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;background:var(--modal-close-bg);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--modal-close-text);transition:all .2s;z-index:1;cursor:pointer;border:none}
+.student-profile-close:hover{background:var(--modal-close-hover-bg);color:var(--modal-close-hover-text)}
+.student-profile-header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.student-profile-photo{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#ff4d00,#ff8c00);display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;font-weight:700;flex-shrink:0;overflow:hidden;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.student-profile-photo img{width:100%;height:100%;object-fit:cover}
+.student-profile-header-info h3{font-size:20px;font-weight:700;color:var(--text);margin-bottom:2px}
+.student-profile-header-info .student-id{font-size:13px;color:var(--text-secondary);font-weight:500}
+.student-profile-header-info .student-team{font-size:13px;color:#ff4d00;font-weight:600;margin-top:2px}
+.student-profile-info{display:flex;flex-direction:column;gap:12px}
+.student-profile-info-item{display:flex;align-items:flex-start;gap:10px;font-size:14px}
+.student-profile-info-item .info-icon{font-size:16px;flex-shrink:0;width:22px;text-align:center;margin-top:1px}
+.student-profile-info-item .info-label{font-weight:600;color:var(--text);min-width:60px;flex-shrink:0}
+.student-profile-info-item .info-value{color:var(--text-secondary);word-break:break-word;white-space:pre-line}
+.student-profile-info-item .info-empty{color:var(--comment-empty);font-style:italic}
+
+/* ===== Admin Student Section ===== */
+.admin-student-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:16px}
+.admin-student-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s}
+.admin-student-card:hover{border-color:#ff4d00;box-shadow:0 4px 12px rgba(255,77,0,.1);transform:translateY(-2px)}
+.admin-student-card.active{border-color:#ff4d00;background:var(--hover-bg)}
+.admin-student-card .student-card-photo{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#ff4d00,#ff8c00);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:700;flex-shrink:0;overflow:hidden}
+.admin-student-card .student-card-photo img{width:100%;height:100%;object-fit:cover}
+.admin-student-card .student-card-info{flex:1;min-width:0}
+.admin-student-card .student-card-name{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-student-card .student-card-meta{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.admin-student-detail{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:24px;margin-top:16px}
+.admin-student-detail h3{font-size:16px;font-weight:700;margin-bottom:16px;color:var(--text);display:flex;align-items:center;gap:8px}
+
+@media(max-width:600px){
+  .student-profile-modal{margin:10px;max-height:90vh}
+  .student-profile-header{flex-direction:column;text-align:center}
+  .admin-student-grid{grid-template-columns:1fr}
+}
+
+.admin-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.admin-content-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.admin-content-header h2{font-size:18px;font-weight:700;color:var(--text)}
+.admin-close-btn{width:36px;height:36px;border-radius:50%;background:var(--modal-close-bg);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--modal-close-text);transition:all .2s;cursor:pointer;border:none}
+.admin-close-btn:hover{background:var(--modal-close-hover-bg);color:var(--modal-close-hover-text)}
+.admin-body{flex:1;padding:24px;overflow-y:auto}
+.admin-section{display:none}
+.admin-section.active{display:block}
+
+/* Admin Stats Grid */
+.admin-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px}
+.admin-stat-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px;transition:background-color .3s,border-color .3s}
+.admin-stat-card .stat-icon{font-size:28px;margin-bottom:8px}
+.admin-stat-card .stat-num{font-size:32px;font-weight:800;color:#ff4d00}
+.admin-stat-card .stat-desc{font-size:13px;color:var(--text-secondary);margin-top:2px}
+
+/* Admin Quick Actions */
+.admin-quick-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+
+/* Admin Buttons */
+.admin-btn{padding:9px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:6px}
+.admin-btn.primary{background:linear-gradient(135deg,#ff4d00,#ff8c00);color:#fff}
+.admin-btn.primary:hover{box-shadow:0 4px 12px rgba(255,77,0,.3);transform:translateY(-1px)}
+.admin-btn.secondary{background:var(--filter-bg);border:1px solid var(--border);color:var(--text)}
+.admin-btn.secondary:hover{background:var(--hover-bg)}
+.admin-btn.danger{background:#fef2f2;color:#ef4444;border:1px solid #fecaca}
+.admin-btn.danger:hover{background:#ef4444;color:#fff}
+[data-theme="dark"] .admin-btn.danger{background:#331111;border-color:#551111}
+[data-theme="dark"] .admin-btn.danger:hover{background:#ef4444;color:#fff}
+
+/* Admin Table */
+.admin-table{width:100%;border-collapse:collapse;font-size:14px}
+.admin-table th{text-align:left;padding:10px 12px;border-bottom:2px solid var(--border);color:var(--text-secondary);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.admin-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+.admin-table tr:hover td{background:var(--hover-bg)}
+.admin-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;margin-top:16px}
+
+/* Admin Form */
+.admin-form{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:24px;margin-top:16px}
+.admin-form h3{font-size:16px;font-weight:700;margin-bottom:16px;color:var(--text);display:flex;align-items:center;gap:8px}
+.admin-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.admin-form-group{display:flex;flex-direction:column;gap:4px}
+.admin-form-group.full{grid-column:1/-1}
+.admin-form-group label{font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px}
+.admin-form-group input,.admin-form-group select,.admin-form-group textarea{padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--input-bg);color:var(--text);outline:none;transition:border .2s}
+.admin-form-group input:focus,.admin-form-group select:focus,.admin-form-group textarea:focus{border-color:#ff4d00}
+.admin-form-group textarea{resize:vertical;min-height:70px}
+.admin-form-actions{display:flex;gap:10px;margin-top:18px;justify-content:flex-end}
+
+/* Admin Members List (dynamic) */
+.admin-members-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.admin-member-item{display:flex;gap:8px;align-items:center}
+.admin-member-item input{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--input-bg);color:var(--text);outline:none}
+.admin-member-item input:focus{border-color:#ff4d00}
+.admin-member-remove{width:32px;height:32px;border-radius:8px;background:#fef2f2;color:#ef4444;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.admin-member-remove:hover{background:#ef4444;color:#fff}
+[data-theme="dark"] .admin-member-remove{background:#331111}
+[data-theme="dark"] .admin-member-remove:hover{background:#ef4444;color:#fff}
+
+/* Admin Comment Card */
+.admin-comment-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;transition:background-color .3s,border-color .3s}
+.admin-comment-card .comment-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.admin-comment-card .comment-project{font-size:12px;font-weight:600;color:#ff4d00}
+.admin-comment-card .comment-info{font-size:13px;font-weight:600;color:var(--text)}
+.admin-comment-card .comment-text{font-size:14px;color:var(--text-secondary);margin-top:4px}
+
+/* Admin Filter Row */
+.admin-filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.admin-filter-row select{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--input-bg);color:var(--text);outline:none}
+
+/* Responsive Admin */
+@media(max-width:600px){
+  .admin-panel{flex-direction:column;height:92vh}
+  .admin-sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border);flex-shrink:0}
+  .admin-sidebar-header{padding:14px 16px 10px}
+  .admin-sidebar-header p{display:none}
+  .admin-nav{display:flex;gap:4px;padding:0 10px 10px;overflow-x:auto}
+  .admin-nav-item{white-space:nowrap;padding:8px 14px;font-size:13px}
+  .admin-nav-item .nav-icon{display:none}
+  .admin-sidebar-footer{display:none}
+  .admin-body{padding:16px}
+  .admin-form-grid{grid-template-columns:1fr}
+  .admin-stats-grid{grid-template-columns:1fr 1fr}
+  .admin-access-btn{bottom:16px;right:16px;width:46px;height:46px;font-size:18px}
+}
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-spinner"></div>
+  <p>프로젝트를 불러오는 중...</p>
+</div>
+
+<!-- Header -->
+<header class="header">
+  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="다크모드 전환">🌙</button>
+  <div class="year-selector">
+    <button class="year-btn" id="yearBtn" onclick="toggleYearDropdown()">📅 2025</button>
+    <div class="year-dropdown" id="yearDropdown">
+      <button class="year-option active" data-year="2025" onclick="selectYear(2025)">2025</button>
+      <button class="year-option" data-year="2024" onclick="selectYear(2024)">2024</button>
+      <button class="year-option" data-year="2023" onclick="selectYear(2023)">2023</button>
+    </div>
+  </div>
+  <div class="header-content">
+    <div class="header-logo">DRONE IMAGING DEPT.</div>
+    <h1><span>🎓</span> Creative Collection</h1>
+    <h2>캡스톤 프로젝트 아카이브</h2>
+    <p class="header-desc">우리 학과 졸업생들의 캡스톤디자인 프로젝트를 영구히 기록합니다.<br>하트를 눌러 응원의 마음을 전해주세요!</p>
+    <div class="header-actions">
+      <button class="header-btn primary" onclick="openVideoModal('exhibition')">🎬 전시 영상</button>
+      <button class="header-btn secondary" onclick="openVideoModal('field')">📸 현장 영상</button>
+      <button class="header-btn secondary" onclick="shuffleCards()">🔀 카드 섞기</button>
+    </div>
+  </div>
+</header>
+
+<!-- Stats -->
+<div class="stats-bar">
+  <div class="stats-inner" id="statsBar">
+    <div class="stat-item"><div class="stat-value" id="statTeams">0</div><div class="stat-label">참가 팀</div></div>
+    <div class="stat-item"><div class="stat-value" id="statMembers">0</div><div class="stat-label">참여 학생</div></div>
+    <div class="stat-item"><div class="stat-value" id="statHearts">0</div><div class="stat-label">총 하트</div></div>
+    <div class="stat-item"><div class="stat-value" id="statComments">0</div><div class="stat-label">총 댓글</div></div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<main class="main">
+  <div class="section-header">
+    <div class="section-title">프로젝트</div>
+    <div class="section-tools">
+      <div class="search-box"><input type="text" id="searchInput" placeholder="프로젝트 검색..." oninput="filterProjects()"></div>
+      <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">전체</button>
+      <button class="filter-btn" data-filter="xcopter" onclick="setFilter('xcopter',this)">Xcopter</button>
+      <button class="filter-btn" data-filter="vtol" onclick="setFilter('vtol',this)">VTOL</button>
+      <button class="filter-btn" data-filter="sw" onclick="setFilter('sw',this)">S/W</button>
+      <button class="filter-btn" data-filter="hw" onclick="setFilter('hw',this)">H/W</button>
+      <button class="filter-btn" data-filter="fc" onclick="setFilter('fc',this)">FC</button>
+      <button class="filter-btn" data-filter="ai" onclick="setFilter('ai',this)">AI</button>
+      <button class="filter-btn" data-filter="web" onclick="setFilter('web',this)">Web</button>
+      <button class="filter-btn" data-filter="app" onclick="setFilter('app',this)">App</button>
+      <button class="filter-btn" data-filter="iot" onclick="setFilter('iot',this)">IoT</button>
+      <button class="filter-btn" data-filter="etc" onclick="setFilter('etc',this)">Etc</button>
+      <button class="shuffle-btn" onclick="shuffleCards()">🔀 섞기</button>
+    </div>
+  </div>
+  <div class="project-grid" id="projectGrid"></div>
+</main>
+
+<!-- Footer -->
+<footer class="footer">
+  <p>© 2025 Creative Collection — 드론영상학과 캡스톤디자인 아카이브</p>
+  <div class="footer-links">
+    <a href="#">대학교 홈</a>
+    <a href="http://dept.jeiu.ac.kr/di" target="_blank">학과 홈</a>
+    <a href="#">문의하기</a>
+  </div>
+</footer>
+
+<!-- DB Status Indicator -->
+<div class="db-status connecting" id="dbStatus"><span class="db-status-dot"></span><span id="dbStatusText">연결 중...</span></div>
+
+<!-- Comment Modal -->
+<div class="modal-overlay" id="commentModal" onclick="closeCommentModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeCommentModal()">✕</button>
+    <div class="comment-modal-header">
+      <h2>💬 <span id="commentTeamName">팀 이름</span></h2>
+    </div>
+    <div class="comment-list" id="commentList">
+      <div class="comment-empty">아직 댓글이 없습니다. 첫 댓글을 남겨보세요!</div>
+    </div>
+    <div class="comment-form">
+      <div class="input-row">
+        <input class="comment-input" id="commentName" placeholder="이름" maxlength="50">
+        <span class="char-count"><span id="nameCount">0</span>/50</span>
+      </div>
+      <textarea class="comment-textarea" id="commentText" placeholder="응원 댓글을 남겨주세요!" maxlength="500"></textarea>
+      <div class="comment-form-footer">
+        <div class="emoji-row">
+          <button class="emoji-btn" onclick="insertEmoji('❤️')">❤️</button>
+          <button class="emoji-btn" onclick="insertEmoji('👍')">👍</button>
+          <button class="emoji-btn" onclick="insertEmoji('🎉')">🎉</button>
+          <button class="emoji-btn" onclick="insertEmoji('🔥')">🔥</button>
+          <button class="emoji-btn" onclick="insertEmoji('💯')">💯</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="char-count"><span id="textCount">0</span>/500</span>
+          <button class="comment-submit" id="commentSubmitBtn" onclick="submitComment()">보내기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Video Modal -->
+<div class="modal-overlay" id="videoModal" onclick="closeVideoModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:680px">
+    <button class="modal-close" onclick="closeVideoModal()">✕</button>
+    <div class="video-modal-inner">
+      <div class="video-tabs">
+        <button class="video-tab active" data-type="interim" onclick="switchVideoTab('interim',this)">중간발표</button>
+        <button class="video-tab" data-type="final" onclick="switchVideoTab('final',this)">최종발표</button>
+      </div>
+      <div class="video-container" id="videoContainer">
+        <div class="video-placeholder"><div class="icon">🎬</div><p>영상을 선택해주세요</p></div>
+      </div>
+      <a class="doc-link" id="docLink" href="#" target="_blank" style="display:none">📄 발표자료 보기</a>
+    </div>
+  </div>
+</div>
+
+<!-- Student Profile Modal -->
+<div class="student-profile-overlay" id="studentProfileModal" onclick="closeStudentProfile(event)">
+  <div class="student-profile-modal" onclick="event.stopPropagation()">
+    <button class="student-profile-close" onclick="closeStudentProfile()">✕</button>
+    <div id="studentProfileContent"></div>
+  </div>
+</div>
+
+<!-- Admin Panel -->
+<button class="admin-access-btn" onclick="openAdminPanel()" title="관리자 패널 (Ctrl+Shift+A)">⚙️</button>
+<div class="admin-overlay" id="adminOverlay" onclick="if(event.target===this)closeAdminPanel()">
+  <div class="admin-panel">
+    <div class="admin-sidebar">
+      <div class="admin-sidebar-header">
+        <h3>⚙️ 관리자</h3>
+        <p>Creative Collection 관리</p>
+      </div>
+      <div class="admin-nav" id="adminNav">
+        <button class="admin-nav-item active" data-section="dashboard" onclick="switchAdminSection('dashboard')"><span class="nav-icon">📊</span>대시보드</button>
+        <button class="admin-nav-item" data-section="projects" onclick="switchAdminSection('projects')"><span class="nav-icon">📁</span>프로젝트</button>
+        <button class="admin-nav-item" data-section="students" onclick="switchAdminSection('students')"><span class="nav-icon">👤</span>참여학생</button>
+        <button class="admin-nav-item" data-section="companies" onclick="switchAdminSection('companies')"><span class="nav-icon">🏢</span>참여기업</button>
+        <button class="admin-nav-item" data-section="comments" onclick="switchAdminSection('comments')"><span class="nav-icon">💬</span>댓글</button>
+        <button class="admin-nav-item" data-section="data" onclick="switchAdminSection('data')"><span class="nav-icon">💾</span>데이터</button>
+      </div>
+      <div class="admin-sidebar-footer">
+        <button class="admin-footer-btn" onclick="closeAdminPanel()"><span class="nav-icon">✕</span>닫기</button>
+      </div>
+    </div>
+    <div class="admin-content">
+      <div class="admin-content-header">
+        <h2 id="adminSectionTitle">📊 대시보드</h2>
+        <button class="admin-close-btn" onclick="closeAdminPanel()">✕</button>
+      </div>
+      <div class="admin-body">
+        <!-- Dashboard -->
+        <div class="admin-section active" id="adminDashboard">
+          <div class="admin-stats-grid" id="adminStatsGrid"></div>
+          <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--text)">퀵 액션</h3>
+          <div class="admin-quick-actions">
+            <button class="admin-btn primary" onclick="switchAdminSection('projects');showProjectForm('add')">➕ 프로젝트 추가</button>
+            <button class="admin-btn secondary" onclick="switchAdminSection('companies')">🏢 참여기업</button>
+            <button class="admin-btn secondary" onclick="switchAdminSection('comments')">💬 댓글 관리</button>
+            <button class="admin-btn secondary" onclick="switchAdminSection('data')">💾 데이터 관리</button>
+          </div>
+        </div>
+        <!-- Projects -->
+        <div class="admin-section" id="adminProjects">
+          <div class="admin-filter-row">
+            <select id="adminYearFilter" onchange="renderAdminProjects()"></select>
+            <button class="admin-btn primary" onclick="showProjectForm('add')">➕ 프로젝트 추가</button>
+            <button class="admin-btn secondary" onclick="addYear()">📅 연도 추가</button>
+            <button class="admin-btn danger" onclick="deleteYear()">🗑️ 연도 삭제</button>
+          </div>
+          <div id="adminProjectTableWrap"></div>
+          <div id="adminProjectFormWrap"></div>
+        </div>
+        <!-- Students -->
+        <div class="admin-section" id="adminStudents">
+          <div class="admin-filter-row">
+            <select id="adminStudentYearFilter" onchange="renderAdminStudents()">
+              <option value="all">전체 연도</option>
+            </select>
+            <select id="adminStudentProjectFilter" onchange="renderAdminStudents()">
+              <option value="all">전체 프로젝트</option>
+            </select>
+            <div class="search-box" style="margin-left:auto"><input type="text" id="adminStudentSearch" placeholder="학생 검색..." oninput="renderAdminStudents()" style="width:180px"></div>
+          </div>
+          <div id="adminStudentGrid" class="admin-student-grid"></div>
+          <div id="adminStudentDetailWrap"></div>
+        </div>
+        <!-- Companies -->
+        <div class="admin-section" id="adminCompanies">
+          <div class="admin-filter-row">
+            <select id="adminCompanyTypeFilter" onchange="renderAdminCompanies()">
+              <option value="all">전체</option>
+              <option value="company">참여기업</option>
+              <option value="career">취업처</option>
+            </select>
+            <div class="search-box"><input type="text" id="adminCompanySearch" placeholder="기업/학생 검색..." oninput="renderAdminCompanies()" style="width:180px"></div>
+            <button class="admin-btn primary" onclick="showCompanyForm('add')" style="margin-left:auto">➕ 기업 등록</button>
+          </div>
+          <div id="adminCompanyFormWrap"></div>
+          <div id="adminCompanyList"></div>
+        </div>
+        <!-- Comments -->
+        <div class="admin-section" id="adminComments">
+          <div class="admin-filter-row">
+            <select id="adminCommentYearFilter" onchange="renderAdminComments()"></select>
+            <select id="adminCommentProjectFilter" onchange="renderAdminComments()"></select>
+          </div>
+          <div id="adminCommentList"></div>
+        </div>
+        <!-- Data -->
+        <div class="admin-section" id="adminData">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="admin-stat-card" id="adminDbStatusCard">
+              <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">🔗 DB 연결 상태</h3>
+              <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px" id="adminDbStatusText">확인 중...</p>
+              <button class="admin-btn primary" onclick="syncLocalToFirebase()">🔄 로컬 → Firebase 동기화</button>
+            </div>
+            <div class="admin-stat-card">
+              <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">📤 데이터 내보내기</h3>
+              <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">프로젝트, 하트, 댓글 데이터를 JSON 파일로 다운로드합니다.</p>
+              <button class="admin-btn primary" onclick="exportAllData()">📤 JSON 내보내기</button>
+            </div>
+            <div class="admin-stat-card">
+              <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">📥 데이터 가져오기</h3>
+              <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">JSON 파일에서 데이터를 가져와 현재 데이터를 교체합니다.</p>
+              <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importData(event)">
+              <button class="admin-btn secondary" onclick="document.getElementById('importFileInput').click()">📥 JSON 가져오기</button>
+            </div>
+            <div class="admin-stat-card">
+              <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">💔 하트 초기화</h3>
+              <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">선택한 프로젝트 또는 전체 하트 수를 초기화합니다.</p>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <select id="heartResetTarget" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--input-bg);color:var(--text)">
+                  <option value="all">전체 프로젝트</option>
+                </select>
+                <button class="admin-btn danger" onclick="resetHearts()">💔 초기화</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// FIREBASE CONFIGURATION
+// ============================================================
+// Firebase 프로젝트 설정값을 아래에 입력하세요.
+// Firebase 콘솔 (https://console.firebase.google.com) → 프로젝트 설정 → 일반 → 내 앱에서 확인
+const firebaseConfig = {
+  apiKey: "AIzaSyBBhc0lI8Kett7Ia1ljtujmtazjw0NUkKs",
+  authDomain: "aidronelab-001.firebaseapp.com",
+  projectId: "aidronelab-001",
+  storageBucket: "aidronelab-001.firebasestorage.app",
+  messagingSenderId: "1061345237973",
+  appId: "1:1061345237973:web:e987ec2d2f635ffb333b5c"
+};
+
+let db = null;
+let firebaseConnected = false;
+
+// Firebase 초기화
+function initFirebase() {
+  try {
+    if (firebaseConfig.projectId === "YOUR_PROJECT_ID") {
+      console.warn('[Firebase] 설정값이 입력되지 않았습니다. localStorage 모드로 동작합니다.');
+      setDbStatus('offline', 'Firebase 미설정');
+      return false;
+    }
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    // 오프라인 persistence 활성화
+    db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+      if (err.code === 'failed-precondition') {
+        console.warn('[Firebase] 여러 탭에서 오프라인 persistence 사용 불가');
+      } else if (err.code === 'unimplemented') {
+        console.warn('[Firebase] 현재 브라우저에서 오프라인 persistence 미지원');
+      }
+    });
+    setDbStatus('connecting', '연결 중...');
+    return true;
+  } catch (err) {
+    console.error('[Firebase] 초기화 실패:', err);
+    setDbStatus('offline', '연결 실패');
+    return false;
+  }
+}
+
+function setDbStatus(status, text) {
+  const el = document.getElementById('dbStatus');
+  const textEl = document.getElementById('dbStatusText');
+  const adminTextEl = document.getElementById('adminDbStatusText');
+  if (el) { el.className = 'db-status ' + status; }
+  if (textEl) { textEl.textContent = text; }
+  if (adminTextEl) { adminTextEl.textContent = 'DB 상태: ' + text; }
+  firebaseConnected = (status === 'online');
+}
+
+// ============================================================
+// FIREBASE DB SERVICE LAYER
+// ============================================================
+async function dbLoadProjects(year) {
+  if (!db) return null;
+  try {
+    const snapshot = await db.collection('cc_projects').where('year', '==', Number(year)).get();
+    const projects = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      delete data.year;
+      projects.push(data);
+    });
+    return projects;
+  } catch (err) {
+    console.error('[Firebase] 프로젝트 로드 실패:', err);
+    return null;
+  }
+}
+
+async function dbLoadAllProjects() {
+  if (!db) return null;
+  try {
+    const snapshot = await db.collection('cc_projects').get();
+    const result = {};
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const year = data.year;
+      if (!result[year]) result[year] = [];
+      const proj = { ...data };
+      delete proj.year;
+      result[year].push(proj);
+    });
+    return result;
+  } catch (err) {
+    console.error('[Firebase] 전체 프로젝트 로드 실패:', err);
+    return null;
+  }
+}
+
+async function dbSaveProject(year, project) {
+  if (!db) return;
+  try {
+    const docId = year + '_' + project.id;
+    await db.collection('cc_projects').doc(docId).set({
+      ...project,
+      year: Number(year)
+    });
+  } catch (err) {
+    console.error('[Firebase] 프로젝트 저장 실패:', err);
+  }
+}
+
+async function dbDeleteProject(year, id) {
+  if (!db) return;
+  try {
+    const docId = year + '_' + id;
+    await db.collection('cc_projects').doc(docId).delete();
+  } catch (err) {
+    console.error('[Firebase] 프로젝트 삭제 실패:', err);
+  }
+}
+
+async function dbDeleteYearProjects(year, projects) {
+  if (!db) return;
+  try {
+    const batch = db.batch();
+    projects.forEach(p => {
+      batch.delete(db.collection('cc_projects').doc(year + '_' + p.id));
+      batch.delete(db.collection('cc_hearts').doc(String(p.id)));
+      batch.delete(db.collection('cc_comments').doc(String(p.id)));
+    });
+    await batch.commit();
+  } catch (err) {
+    console.error('[Firebase] 연도 삭제 실패:', err);
+  }
+}
+
+async function dbLoadHearts() {
+  if (!db) return null;
+  try {
+    const snapshot = await db.collection('cc_hearts').get();
+    const result = {};
+    const liked = {};
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      result[doc.id] = data.count || 0;
+      if (data.likedBy && data.likedBy[authorId]) {
+        liked[doc.id] = true;
+      }
+    });
+    return { hearts: result, likedCards: liked };
+  } catch (err) {
+    console.error('[Firebase] 하트 로드 실패:', err);
+    return null;
+  }
+}
+
+async function dbSaveHeart(projectId, heartCount, isLiked) {
+  if (!db) return;
+  try {
+    const docRef = db.collection('cc_hearts').doc(String(projectId));
+    const update = { count: heartCount };
+    if (isLiked) {
+      update['likedBy.' + authorId] = true;
+    } else {
+      update['likedBy.' + authorId] = firebase.firestore.FieldValue.delete();
+    }
+    await docRef.set(update, { merge: true });
+  } catch (err) {
+    console.error('[Firebase] 하트 저장 실패:', err);
+  }
+}
+
+async function dbResetHeart(projectId) {
+  if (!db) return;
+  try {
+    await db.collection('cc_hearts').doc(String(projectId)).delete();
+  } catch (err) {
+    console.error('[Firebase] 하트 초기화 실패:', err);
+  }
+}
+
+async function dbResetAllHearts() {
+  if (!db) return;
+  try {
+    const snapshot = await db.collection('cc_hearts').get();
+    const batch = db.batch();
+    snapshot.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+  } catch (err) {
+    console.error('[Firebase] 전체 하트 초기화 실패:', err);
+  }
+}
+
+async function dbLoadComments() {
+  if (!db) return null;
+  try {
+    const snapshot = await db.collection('cc_comments').get();
+    const result = {};
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.items && data.items.length > 0) {
+        result[doc.id] = data.items;
+      }
+    });
+    return result;
+  } catch (err) {
+    console.error('[Firebase] 댓글 로드 실패:', err);
+    return null;
+  }
+}
+
+async function dbSaveComments(projectId, items) {
+  if (!db) return;
+  try {
+    await db.collection('cc_comments').doc(String(projectId)).set({ items: items || [] });
+  } catch (err) {
+    console.error('[Firebase] 댓글 저장 실패:', err);
+  }
+}
+
+// 참여기업
+async function dbLoadCompanies() {
+  if (!db) return null;
+  try {
+    const snapshot = await db.collection('cc_companies').get();
+    const result = [];
+    snapshot.forEach(doc => result.push({ ...doc.data(), _docId: doc.id }));
+    return result;
+  } catch (err) {
+    console.error('[Firebase] 기업 로드 실패:', err);
+    return null;
+  }
+}
+
+async function dbSaveCompany(company) {
+  if (!db) return;
+  try {
+    await db.collection('cc_companies').doc(String(company.id)).set(company);
+  } catch (err) {
+    console.error('[Firebase] 기업 저장 실패:', err);
+  }
+}
+
+async function dbDeleteCompany(id) {
+  if (!db) return;
+  try {
+    await db.collection('cc_companies').doc(String(id)).delete();
+  } catch (err) {
+    console.error('[Firebase] 기업 삭제 실패:', err);
+  }
+}
+
+// 로컬 전체 데이터를 Firebase에 동기화
+async function syncLocalToFirebase() {
+  if (!db) { alert('Firebase가 연결되지 않았습니다.'); return; }
+  if (!confirm('현재 로컬 데이터를 Firebase에 업로드하시겠습니까?\n기존 Firebase 데이터는 덮어쓰기됩니다.')) return;
+  try {
+    setDbStatus('connecting', '동기화 중...');
+    // 프로젝트 업로드
+    for (const [year, projects] of Object.entries(projectData)) {
+      for (const p of projects) {
+        await dbSaveProject(year, p);
+      }
+    }
+    // 하트 업로드
+    for (const [id, count] of Object.entries(hearts)) {
+      const likedBy = {};
+      if (likedCards[id]) likedBy[authorId] = true;
+      await db.collection('cc_hearts').doc(String(id)).set({ count, likedBy });
+    }
+    // 댓글 업로드
+    for (const [id, items] of Object.entries(comments)) {
+      await dbSaveComments(id, items);
+    }
+    // 기업 업로드
+    for (const c of companyData) {
+      await dbSaveCompany(c);
+    }
+    setDbStatus('online', 'Firebase 연결됨');
+    alert('Firebase 동기화가 완료되었습니다.');
+  } catch (err) {
+    console.error('[Firebase] 동기화 실패:', err);
+    setDbStatus('offline', '동기화 실패');
+    alert('동기화 중 오류가 발생했습니다: ' + err.message);
+  }
+}
+
+// Firebase에서 전체 데이터 로드
+async function loadFromFirebase() {
+  if (!db) return false;
+  try {
+    setDbStatus('connecting', '데이터 로드 중...');
+    const [fbProjects, fbHearts, fbComments, fbCompanies] = await Promise.all([
+      dbLoadAllProjects(),
+      dbLoadHearts(),
+      dbLoadComments(),
+      dbLoadCompanies()
+    ]);
+
+    if (fbProjects === null && fbHearts === null && fbComments === null) {
+      setDbStatus('offline', '연결 실패');
+      return false;
+    }
+
+    // 프로젝트 적용
+    if (fbProjects && Object.keys(fbProjects).length > 0) {
+      Object.keys(projectData).forEach(k => delete projectData[k]);
+      Object.assign(projectData, fbProjects);
+    }
+
+    // 하트 적용
+    if (fbHearts) {
+      Object.keys(hearts).forEach(k => delete hearts[k]);
+      Object.assign(hearts, fbHearts.hearts);
+      Object.keys(likedCards).forEach(k => delete likedCards[k]);
+      Object.assign(likedCards, fbHearts.likedCards);
+    }
+
+    // 댓글 적용
+    if (fbComments) {
+      Object.keys(comments).forEach(k => delete comments[k]);
+      Object.assign(comments, fbComments);
+    }
+
+    // 기업 적용
+    if (fbCompanies && fbCompanies.length > 0) {
+      companyData.length = 0;
+      fbCompanies.forEach(c => { delete c._docId; companyData.push(c); });
+    }
+
+    // localStorage에도 캐시
+    save();
+    setDbStatus('online', 'Firebase 연결됨');
+    return true;
+  } catch (err) {
+    console.error('[Firebase] 데이터 로드 실패:', err);
+    setDbStatus('offline', '연결 실패');
+    return false;
+  }
+}
+
+// ============================================================
+// DATA - 샘플 프로젝트 데이터 (이 부분을 수정하여 실제 데이터로 교체)
+// ============================================================
+const projectData = {
+  2025: [
+    {
+      id: 1,
+      team: 'Team Nova',
+      platform: 'xcopter',
+      classGroup: 'A',
+      title: 'EduFlow - 실시간 학습 관리 플랫폼',
+      desc: 'WebSocket 기반 실시간 강의 스트리밍과 AI 학습 분석 대시보드를 제공하는 LMS 플랫폼입니다.',
+      image: '',
+      members: [
+        { name: '김민수', comment: '최고의 팀워크였습니다!', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '이서연', comment: '많이 성장할 수 있었어요', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '박준혁', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '최유진', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' }
+      ],
+      video: { interim: 'dQw4w9WgXcQ', final: 'dQw4w9WgXcQ', doc: '#' },
+      siteUrl: '#',
+      githubUrl: '#'
+    },
+    {
+      id: 2,
+      team: 'ByteForce',
+      platform: 'vtol',
+      classGroup: 'A',
+      title: 'HealthMate - AI 건강관리 앱',
+      desc: 'TensorFlow Lite를 활용한 식단 분석 및 운동 추천 모바일 앱입니다.',
+      image: '',
+      members: [
+        { name: '정하늘', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '송다현', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '한지호', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' }
+      ],
+      video: { interim: 'dQw4w9WgXcQ', final: 'dQw4w9WgXcQ', doc: '#' },
+      siteUrl: '',
+      githubUrl: '#'
+    },
+    {
+      id: 3,
+      team: 'DeepMinds',
+      platform: 'ai',
+      classGroup: 'B',
+      title: 'SmartFarm AI - 스마트팜 작물 질병 진단',
+      desc: 'CNN 기반 작물 잎 이미지 분석으로 질병을 조기 진단하고 처방을 제공합니다.',
+      image: '',
+      members: [
+        { name: '오승현', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '강예린', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '윤태영', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '임소희', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' }
+      ],
+      video: { interim: 'dQw4w9WgXcQ', final: 'dQw4w9WgXcQ', doc: '#' },
+      siteUrl: '#',
+      githubUrl: '#'
+    },
+    {
+      id: 4,
+      team: 'IoT Crew',
+      platform: 'hw',
+      classGroup: 'B',
+      title: 'AirGuard - 실내 공기질 모니터링 시스템',
+      desc: 'Arduino + ESP32 기반 센서 네트워크로 실내 공기질을 실시간 모니터링하는 IoT 솔루션입니다.',
+      image: '',
+      members: [
+        { name: '배성준', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '조미래', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '신동욱', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' }
+      ],
+      video: { interim: 'dQw4w9WgXcQ', final: 'dQw4w9WgXcQ', doc: '#' },
+      siteUrl: '',
+      githubUrl: '#'
+    },
+    {
+      id: 5,
+      team: 'PixelStorm',
+      platform: 'fc',
+      classGroup: 'A',
+      title: 'DungeonRush - 로그라이크 던전 탐험 게임',
+      desc: 'Unity 엔진으로 개발한 절차적 생성 던전과 전략적 전투 시스템의 로그라이크 게임입니다.',
+      image: '',
+      members: [
+        { name: '류건우', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '문지원', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '장서윤', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '황민재', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' }
+      ],
+      video: { interim: 'dQw4w9WgXcQ', final: 'dQw4w9WgXcQ', doc: '#' },
+      siteUrl: '#',
+      githubUrl: '#'
+    },
+    {
+      id: 6,
+      team: 'CloudNine',
+      platform: 'sw',
+      classGroup: 'B',
+      title: 'DevConnect - 개발자 매칭 플랫폼',
+      desc: '기술 스택 기반 팀원 매칭과 프로젝트 협업 도구를 제공하는 개발자 커뮤니티 플랫폼입니다.',
+      image: '',
+      members: [
+        { name: '안태경', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '서유나', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '권도현', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' }
+      ],
+      video: { interim: 'dQw4w9WgXcQ', final: 'dQw4w9WgXcQ', doc: '#' },
+      siteUrl: '#',
+      githubUrl: '#'
+    },
+    {
+      id: 7,
+      team: 'DataWave',
+      platform: 'ai',
+      classGroup: 'A',
+      title: 'SentiNews - 뉴스 감성 분석 서비스',
+      desc: 'BERT 모델을 활용하여 실시간 뉴스 기사의 감성을 분석하고 트렌드를 시각화합니다.',
+      image: '',
+      members: [
+        { name: '김채원', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '이동건', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '박소연', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '정우성', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' }
+      ],
+      video: { interim: 'dQw4w9WgXcQ', final: 'dQw4w9WgXcQ', doc: '#' },
+      siteUrl: '#',
+      githubUrl: ''
+    },
+    {
+      id: 8,
+      team: 'AppFactory',
+      platform: 'web',
+      classGroup: 'B',
+      title: 'PetPal - 반려동물 종합 케어 앱',
+      desc: 'GPS 산책 추적, 건강 기록, 주변 병원 안내 등 반려동물을 위한 올인원 모바일 앱입니다.',
+      image: '',
+      members: [
+        { name: '조은서', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '남궁현', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' },
+        { name: '하윤아', comment: '\1', avatar: '', studentId: '', phone: '', email: '', photo: '', career: '', history: '', desiredCareer: '' }
+      ],
+      video: { interim: 'dQw4w9WgXcQ', final: 'dQw4w9WgXcQ', doc: '#' },
+      siteUrl: '#',
+      githubUrl: '#'
+    }
+  ],
+  2024: [],
+  2023: []
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let currentYear = 2025;
+let currentFilter = 'all';
+let hearts = JSON.parse(localStorage.getItem('cc_hearts') || '{}');
+let comments = JSON.parse(localStorage.getItem('cc_comments') || '{}');
+let likedCards = JSON.parse(localStorage.getItem('cc_liked') || '{}');
+let companyData = JSON.parse(localStorage.getItem('cc_companies') || '[]');
+let currentCommentCardId = null;
+let currentVideoCard = null;
+let savedName = localStorage.getItem('cc_comment_name') || '';
+const authorId = localStorage.getItem('cc_author_id') || (() => { const id = 'user_' + Math.random().toString(36).slice(2, 10); localStorage.setItem('cc_author_id', id); return id; })();
+
+// ============================================================
+// HELPERS
+// ============================================================
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function relativeTime(ts) {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60) return '방금 전';
+  if (diff < 3600) return Math.floor(diff / 60) + '분 전';
+  if (diff < 86400) return Math.floor(diff / 3600) + '시간 전';
+  if (diff < 604800) return Math.floor(diff / 86400) + '일 전';
+  return new Date(ts).toLocaleDateString('ko-KR');
+}
+
+function save() {
+  localStorage.setItem('cc_hearts', JSON.stringify(hearts));
+  localStorage.setItem('cc_comments', JSON.stringify(comments));
+  localStorage.setItem('cc_liked', JSON.stringify(likedCards));
+  localStorage.setItem('cc_projectData', JSON.stringify(projectData));
+  localStorage.setItem('cc_companies', JSON.stringify(companyData));
+}
+
+function getProjects() {
+  return projectData[currentYear] || [];
+}
+
+function getInitial(name) {
+  return name ? name.charAt(0) : '?';
+}
+
+const gradients = [
+  'linear-gradient(135deg,#ff6b6b,#ee5a24)',
+  'linear-gradient(135deg,#74b9ff,#0984e3)',
+  'linear-gradient(135deg,#55efc4,#00b894)',
+  'linear-gradient(135deg,#fdcb6e,#e17055)',
+  'linear-gradient(135deg,#a29bfe,#6c5ce7)',
+  'linear-gradient(135deg,#fd79a8,#e84393)',
+  'linear-gradient(135deg,#00cec9,#0984e3)',
+  'linear-gradient(135deg,#fab1a0,#e17055)',
+];
+
+const platformLabels = { xcopter: 'Xcopter', vtol: 'VTOL', sw: 'S/W', hw: 'H/W', fc: 'FC', ai: 'AI', web: 'Web', app: 'App', iot: 'IoT', etc: 'Etc' };
+
+const badgeDefs = [
+  { key: 'cert',   label: '국가자격증', icon: '📜', css: 'b-cert',   color: '#f59e0b' },
+  { key: 'flight', label: '비행조종',   icon: '🛩️', css: 'b-flight', color: '#3b82f6' },
+  { key: 'dev',    label: '드론개발',   icon: '🔧', css: 'b-dev',    color: '#22c55e' },
+  { key: 'coding', label: '드론코딩',   icon: '💻', css: 'b-coding', color: '#8b5cf6' },
+  { key: 'design', label: '드론설계',   icon: '✏️', css: 'b-design', color: '#ec4899' },
+  { key: '3dmap',  label: '3D맵핑',    icon: '🗺️', css: 'b-3dmap',  color: '#0ea5e9' },
+  { key: 'swarm',  label: '군집비행',   icon: '🐝', css: 'b-swarm',  color: '#f97316' }
+];
+
+function renderBadges(badges) {
+  if (!badges || badges.length === 0) return '';
+  return '<div class="digital-badges">' +
+    badges.map(b => {
+      const def = badgeDefs.find(d => d.key === b);
+      if (def) return `<span class="digital-badge ${def.css}">${def.icon} ${def.label}</span>`;
+      return `<span class="digital-badge b-custom">${esc(b)}</span>`;
+    }).join('') + '</div>';
+}
+
+function renderBadgeDots(badges) {
+  if (!badges || badges.length === 0) return '';
+  return '<div class="member-badges">' +
+    badges.slice(0, 5).map(b => {
+      const def = badgeDefs.find(d => d.key === b);
+      return `<span class="member-badge-dot" style="background:${def ? def.color : '#999'}" title="${def ? def.label : b}"></span>`;
+    }).join('') +
+    (badges.length > 5 ? `<span style="font-size:8px;color:var(--text-secondary)">+${badges.length - 5}</span>` : '') +
+    '</div>';
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderProjects() {
+  const grid = document.getElementById('projectGrid');
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  let list = getProjects();
+
+  if (currentFilter !== 'all') {
+    list = list.filter(p => p.platform === currentFilter);
+  }
+  if (query) {
+    list = list.filter(p =>
+      p.team.toLowerCase().includes(query) ||
+      p.title.toLowerCase().includes(query) ||
+      p.desc.toLowerCase().includes(query) ||
+      p.members.some(m => m.name.toLowerCase().includes(query))
+    );
+  }
+
+  if (list.length === 0) {
+    grid.innerHTML = '<div class="no-results"><div class="icon">📭</div><p>검색 결과가 없습니다</p></div>';
+    updateStats();
+    return;
+  }
+
+  grid.innerHTML = list.map((p, idx) => {
+    const h = hearts[p.id] || 0;
+    const c = (comments[p.id] || []).length;
+    const liked = likedCards[p.id] ? 'liked' : '';
+    const grad = gradients[idx % gradients.length];
+    return `
+    <div class="card" data-id="${p.id}" data-platform="${p.platform}">
+      <div class="card-image" style="background:${grad}" onclick="openVideoModalForCard(${p.id})">
+        ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.team)}" loading="lazy">` : ''}
+        <div class="card-overlay">
+          <div class="heart-badge ${liked}" onclick="event.stopPropagation();toggleHeart(${p.id},event)">❤️ <span id="hc-${p.id}">${h}</span></div>
+          <div class="comment-badge" onclick="event.stopPropagation();openCommentModal(${p.id})">💬 <span id="cc-${p.id}">${c}</span></div>
+        </div>
+      </div>
+      <div class="card-content">
+        <div class="card-title-row">
+          <span class="card-team-name">${esc(p.team)}</span>
+          <span class="badge ${p.platform}">${platformLabels[p.platform] || p.platform}</span>
+          <span class="badge class-${p.classGroup.toLowerCase()}">${p.classGroup}반</span>
+          ${p.award === 'internal' ? '<span class="badge award-internal">🏆 교내 수상</span>' : ''}
+          ${p.award === 'external' ? '<span class="badge award-external">🏅 교외 수상</span>' : ''}
+          ${p.award === 'both' ? '<span class="badge award-internal">🏆 교내 수상</span><span class="badge award-external">🏅 교외 수상</span>' : ''}
+        </div>
+        ${p.company ? `<div class="card-company"><span class="company-icon">🏢</span><span>참여기업:</span><span class="company-name">${esc(p.company)}</span></div>` : ''}
+        <div class="card-members">
+          ${p.members.map((m, mi) => `
+            <div class="member" onclick="openStudentProfile(${currentYear},${p.id},${mi})">
+              <div class="member-avatar" style="background:${gradients[(idx * 3 + mi) % gradients.length]}">
+                ${(m.photo || m.avatar) ? `<img src="${esc(m.photo || m.avatar)}" alt="${esc(m.name)}" loading="lazy">` : esc(getInitial(m.name))}
+              </div>
+              <span class="member-name">${esc(m.name)}</span>
+              ${renderBadgeDots(m.badges)}
+              ${m.comment ? `<div class="speech-bubble">${esc(m.comment)}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+        <div class="card-desc">
+          <h4>${esc(p.title)}</h4>
+          <p>${esc(p.desc)}</p>
+        </div>
+        <div class="card-links">
+          <button class="card-link video" onclick="openVideoModalForCard(${p.id})">🎬 영상 보기</button>
+          ${p.siteUrl ? `<a class="card-link site" href="${esc(p.siteUrl)}" target="_blank">🌐 바로가기</a>` : ''}
+          ${p.githubUrl ? `<a class="card-link github" href="${esc(p.githubUrl)}" target="_blank">📦 GitHub</a>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  updateStats();
+}
+
+function updateStats() {
+  const projects = getProjects();
+  const totalMembers = projects.reduce((s, p) => s + p.members.length, 0);
+  const totalHearts = projects.reduce((s, p) => s + (hearts[p.id] || 0), 0);
+  const totalComments = projects.reduce((s, p) => s + (comments[p.id] || []).length, 0);
+  document.getElementById('statTeams').textContent = projects.length;
+  document.getElementById('statMembers').textContent = totalMembers;
+  document.getElementById('statHearts').textContent = totalHearts;
+  document.getElementById('statComments').textContent = totalComments;
+}
+
+// ============================================================
+// HEART SYSTEM
+// ============================================================
+let heartCooldown = {};
+
+function toggleHeart(id, event) {
+  if (heartCooldown[id]) return;
+  heartCooldown[id] = true;
+  setTimeout(() => { heartCooldown[id] = false; }, 500);
+
+  if (likedCards[id]) {
+    hearts[id] = Math.max(0, (hearts[id] || 0) - 1);
+    delete likedCards[id];
+  } else {
+    hearts[id] = (hearts[id] || 0) + 1;
+    likedCards[id] = true;
+    createHeartAnimation(event);
+  }
+
+  save();
+  dbSaveHeart(id, hearts[id] || 0, !!likedCards[id]);
+  const el = document.getElementById('hc-' + id);
+  if (el) el.textContent = hearts[id];
+  const badge = event.currentTarget || event.target.closest('.heart-badge');
+  if (badge) {
+    badge.classList.toggle('liked', !!likedCards[id]);
+  }
+  updateStats();
+}
+
+function createHeartAnimation(event) {
+  const heart = document.createElement('div');
+  heart.className = 'heart-float';
+  heart.textContent = '❤️';
+  heart.style.left = event.clientX - 12 + 'px';
+  heart.style.top = event.clientY - 12 + 'px';
+  document.body.appendChild(heart);
+  setTimeout(() => heart.remove(), 1500);
+}
+
+// ============================================================
+// COMMENT SYSTEM
+// ============================================================
+function openCommentModal(id) {
+  currentCommentCardId = id;
+  const project = getProjects().find(p => p.id === id);
+  document.getElementById('commentTeamName').textContent = project ? project.team : '';
+  document.getElementById('commentName').value = savedName;
+  document.getElementById('nameCount').textContent = savedName.length;
+  document.getElementById('commentText').value = '';
+  document.getElementById('textCount').textContent = '0';
+  renderComments();
+  document.getElementById('commentModal').classList.add('show');
+}
+
+function closeCommentModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('commentModal').classList.remove('show');
+  currentCommentCardId = null;
+}
+
+function renderComments() {
+  const list = document.getElementById('commentList');
+  const data = comments[currentCommentCardId] || [];
+  if (data.length === 0) {
+    list.innerHTML = '<div class="comment-empty">아직 댓글이 없습니다. 첫 댓글을 남겨보세요!</div>';
+    return;
+  }
+  list.innerHTML = data.map((c, i) => `
+    <div class="comment-item">
+      <div class="comment-head">
+        <div class="comment-author">
+          ${esc(c.name)}
+          ${c.authorId === authorId ? '<span class="special-tag">나</span>' : ''}
+        </div>
+        <span class="comment-time">${relativeTime(c.ts)}</span>
+      </div>
+      ${c.authorId === authorId ? `<button class="comment-delete" onclick="deleteComment(${i})">🗑️</button>` : ''}
+      <div class="comment-body">${esc(c.text)}</div>
+    </div>
+  `).join('');
+  list.scrollTop = list.scrollHeight;
+}
+
+function submitComment() {
+  const name = document.getElementById('commentName').value.trim();
+  const text = document.getElementById('commentText').value.trim();
+  if (!name || !text) return;
+  if (!comments[currentCommentCardId]) comments[currentCommentCardId] = [];
+  comments[currentCommentCardId].push({ name, text, ts: Date.now(), authorId });
+  savedName = name;
+  localStorage.setItem('cc_comment_name', name);
+  save();
+  dbSaveComments(currentCommentCardId, comments[currentCommentCardId]);
+  document.getElementById('commentText').value = '';
+  document.getElementById('textCount').textContent = '0';
+  renderComments();
+  const el = document.getElementById('cc-' + currentCommentCardId);
+  if (el) el.textContent = comments[currentCommentCardId].length;
+  updateStats();
+}
+
+function deleteComment(index) {
+  if (!confirm('댓글을 삭제하시겠습니까?')) return;
+  const arr = comments[currentCommentCardId] || [];
+  if (arr[index] && arr[index].authorId === authorId) {
+    arr.splice(index, 1);
+    save();
+    dbSaveComments(currentCommentCardId, arr);
+    renderComments();
+    const el = document.getElementById('cc-' + currentCommentCardId);
+    if (el) el.textContent = arr.length;
+    updateStats();
+  }
+}
+
+function insertEmoji(emoji) {
+  const ta = document.getElementById('commentText');
+  const start = ta.selectionStart;
+  ta.value = ta.value.slice(0, start) + emoji + ta.value.slice(ta.selectionEnd);
+  ta.selectionStart = ta.selectionEnd = start + emoji.length;
+  document.getElementById('textCount').textContent = ta.value.length;
+  ta.focus();
+}
+
+// Character counters
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('commentName').addEventListener('input', function() {
+    document.getElementById('nameCount').textContent = this.value.length;
+  });
+  document.getElementById('commentText').addEventListener('input', function() {
+    document.getElementById('textCount').textContent = this.value.length;
+  });
+});
+
+// ============================================================
+// VIDEO MODAL
+// ============================================================
+function openVideoModal(type) {
+  currentVideoCard = null;
+  document.getElementById('videoContainer').innerHTML = '<div class="video-placeholder"><div class="icon">🎬</div><p>전시 영상 준비 중...</p></div>';
+  document.getElementById('docLink').style.display = 'none';
+  document.getElementById('videoModal').classList.add('show');
+}
+
+function openVideoModalForCard(id) {
+  const project = getProjects().find(p => p.id === id);
+  if (!project) return;
+  currentVideoCard = project;
+  switchVideoTab('interim', document.querySelector('.video-tab[data-type="interim"]'));
+  document.getElementById('videoModal').classList.add('show');
+}
+
+function switchVideoTab(type, btn) {
+  document.querySelectorAll('.video-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const container = document.getElementById('videoContainer');
+  const docLink = document.getElementById('docLink');
+
+  if (!currentVideoCard) {
+    container.innerHTML = '<div class="video-placeholder"><div class="icon">🎬</div><p>영상 준비 중입니다</p></div>';
+    docLink.style.display = 'none';
+    return;
+  }
+
+  const videoId = type === 'interim' ? currentVideoCard.video.interim : currentVideoCard.video.final;
+  if (videoId) {
+    container.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" allow="autoplay;encrypted-media" allowfullscreen></iframe>`;
+  } else {
+    container.innerHTML = '<div class="video-placeholder"><div class="icon">📭</div><p>등록된 영상이 없습니다</p></div>';
+  }
+
+  if (currentVideoCard.video.doc && currentVideoCard.video.doc !== '#') {
+    docLink.href = currentVideoCard.video.doc;
+    docLink.style.display = 'inline-flex';
+  } else {
+    docLink.style.display = 'none';
+  }
+}
+
+function closeVideoModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('videoModal').classList.remove('show');
+  document.getElementById('videoContainer').innerHTML = '<div class="video-placeholder"><div class="icon">🎬</div></div>';
+  currentVideoCard = null;
+}
+
+// ============================================================
+// YEAR SELECTOR
+// ============================================================
+function toggleYearDropdown() {
+  document.getElementById('yearDropdown').classList.toggle('show');
+}
+
+function selectYear(year) {
+  currentYear = year;
+  document.getElementById('yearBtn').textContent = '📅 ' + year;
+  document.querySelectorAll('.year-option').forEach(o => o.classList.toggle('active', +o.dataset.year === year));
+  document.getElementById('yearDropdown').classList.remove('show');
+  renderProjects();
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.year-selector')) {
+    document.getElementById('yearDropdown').classList.remove('show');
+  }
+});
+
+// ============================================================
+// FILTER & SEARCH
+// ============================================================
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderProjects();
+}
+
+function filterProjects() {
+  renderProjects();
+}
+
+// ============================================================
+// SHUFFLE
+// ============================================================
+function shuffleCards() {
+  const grid = document.getElementById('projectGrid');
+  const cards = [...grid.querySelectorAll('.card')];
+  cards.forEach(c => c.classList.add('shuffle-out'));
+
+  setTimeout(() => {
+    const data = projectData[currentYear];
+    if (!data) return;
+    // Fisher-Yates
+    for (let i = data.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [data[i], data[j]] = [data[j], data[i]];
+    }
+    renderProjects();
+    const newCards = [...grid.querySelectorAll('.card')];
+    newCards.forEach((c, i) => {
+      c.classList.add('shuffle-in');
+      c.style.animationDelay = i * 60 + 'ms';
+    });
+    setTimeout(() => newCards.forEach(c => { c.classList.remove('shuffle-in'); c.style.animationDelay = ''; }), 800);
+  }, 400);
+}
+
+// ============================================================
+// SPEECH BUBBLE
+// ============================================================
+let bubbleTimeout = null;
+function showBubble(el) {
+  document.querySelectorAll('.speech-bubble.show').forEach(b => b.classList.remove('show'));
+  const bubble = el.querySelector('.speech-bubble');
+  if (!bubble) return;
+  bubble.classList.add('show');
+  clearTimeout(bubbleTimeout);
+  bubbleTimeout = setTimeout(() => bubble.classList.remove('show'), 3000);
+}
+
+// ============================================================
+// KEYBOARD
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('studentProfileModal').classList.contains('show')) { closeStudentProfile(); return; }
+    if (document.getElementById('adminOverlay').classList.contains('show')) { closeAdminPanel(); return; }
+    closeCommentModal();
+    closeVideoModal();
+  }
+});
+
+// ============================================================
+// THEME
+// ============================================================
+function getPreferredTheme() {
+  const saved = localStorage.getItem('cc_theme');
+  if (saved) return saved;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyTheme(theme) {
+  if (theme === 'dark') {
+    document.documentElement.dataset.theme = 'dark';
+    document.getElementById('themeToggle').textContent = '☀️';
+  } else {
+    delete document.documentElement.dataset.theme;
+    document.getElementById('themeToggle').textContent = '🌙';
+  }
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  const newTheme = isDark ? 'light' : 'dark';
+  localStorage.setItem('cc_theme', newTheme);
+  applyTheme(newTheme);
+}
+
+// Apply theme immediately (before DOMContentLoaded to prevent flash)
+(function() {
+  const theme = getPreferredTheme();
+  if (theme === 'dark') document.documentElement.dataset.theme = 'dark';
+})();
+
+// Listen for system theme changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  if (!localStorage.getItem('cc_theme')) {
+    applyTheme(e.matches ? 'dark' : 'light');
+  }
+});
+
+// ============================================================
+// INIT
+// ============================================================
+
+// 확인 없이 Firebase 동기화 (importData 등에서 사용)
+async function syncLocalToFirebaseQuiet() {
+  if (!db) return;
+  for (const [year, projects] of Object.entries(projectData)) {
+    for (const p of projects) {
+      await dbSaveProject(year, p);
+    }
+  }
+  for (const [id, count] of Object.entries(hearts)) {
+    const likedBy = {};
+    if (likedCards[id]) likedBy[authorId] = true;
+    await db.collection('cc_hearts').doc(String(id)).set({ count, likedBy });
+  }
+  for (const [id, items] of Object.entries(comments)) {
+    await dbSaveComments(id, items);
+  }
+  for (const c of companyData) {
+    await dbSaveCompany(c);
+  }
+}
+
+// localStorage에 캐시된 projectData가 있으면 복원
+(function restoreProjectDataFromCache() {
+  const cached = localStorage.getItem('cc_projectData');
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed && typeof parsed === 'object') {
+        Object.keys(projectData).forEach(k => delete projectData[k]);
+        Object.assign(projectData, parsed);
+      }
+    } catch (e) { /* ignore */ }
+  }
+})();
+
+window.addEventListener('DOMContentLoaded', async () => {
+  applyTheme(getPreferredTheme());
+
+  // Firebase 초기화 시도
+  const fbReady = initFirebase();
+
+  if (fbReady) {
+    // Firebase에서 데이터 로드 시도
+    const loaded = await loadFromFirebase();
+    if (loaded) {
+      // 연도 드롭다운 갱신
+      refreshYearDropdown();
+    }
+    // 실패 시 localStorage 폴백 (이미 state에 로드됨)
+  } else {
+    setDbStatus('offline', 'Firebase 미설정');
+  }
+
+  renderProjects();
+  setTimeout(() => document.getElementById('loadingScreen').classList.add('hidden'), 600);
+  // Console greeting
+  console.log('%c🎓 Creative Collection', 'font-size:20px;font-weight:bold;color:#ff4d00;');
+  console.log('%c캡스톤디자인 프로젝트 아카이브', 'font-size:14px;color:#888;');
+  if (firebaseConnected) {
+    console.log('%c🔗 Firebase 연결됨', 'font-size:12px;color:#16a34a;');
+  } else {
+    console.log('%c⚠️ localStorage 모드', 'font-size:12px;color:#ca8a04;');
+  }
+});
+
+// ============================================================
+// ADMIN PANEL
+// ============================================================
+function openAdminPanel() {
+  document.getElementById('adminOverlay').classList.add('show');
+  renderAdminDashboard();
+  populateAdminFilters();
+  populateHeartResetTargets();
+}
+
+function closeAdminPanel() {
+  document.getElementById('adminOverlay').classList.remove('show');
+}
+
+function switchAdminSection(section) {
+  const titles = { dashboard: '📊 대시보드', projects: '📁 프로젝트', students: '👤 참여학생', companies: '🏢 참여기업', comments: '💬 댓글', data: '💾 데이터' };
+  document.getElementById('adminSectionTitle').textContent = titles[section] || section;
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.admin-nav-item').forEach(n => n.classList.remove('active'));
+  const target = document.getElementById('admin' + section.charAt(0).toUpperCase() + section.slice(1));
+  if (target) target.classList.add('active');
+  const navBtn = document.querySelector(`.admin-nav-item[data-section="${section}"]`);
+  if (navBtn) navBtn.classList.add('active');
+
+  if (section === 'dashboard') renderAdminDashboard();
+  if (section === 'projects') renderAdminProjects();
+  if (section === 'students') renderAdminStudents();
+  if (section === 'companies') renderAdminCompanies();
+  if (section === 'comments') renderAdminComments();
+  if (section === 'data') populateHeartResetTargets();
+}
+
+function populateAdminFilters() {
+  const years = Object.keys(projectData).sort((a, b) => b - a);
+  const yearFilter = document.getElementById('adminYearFilter');
+  yearFilter.innerHTML = years.map(y => `<option value="${y}">${y}년</option>`).join('');
+  const commentYearFilter = document.getElementById('adminCommentYearFilter');
+  commentYearFilter.innerHTML = '<option value="all">전체 연도</option>' + years.map(y => `<option value="${y}">${y}년</option>`).join('');
+  const studentYearFilter = document.getElementById('adminStudentYearFilter');
+  if (studentYearFilter) studentYearFilter.innerHTML = '<option value="all">전체 연도</option>' + years.map(y => `<option value="${y}">${y}년</option>`).join('');
+}
+
+function refreshYearDropdown() {
+  const years = Object.keys(projectData).sort((a, b) => b - a);
+  const dropdown = document.getElementById('yearDropdown');
+  dropdown.innerHTML = years.map(y => `<button class="year-option${+y === currentYear ? ' active' : ''}" data-year="${y}" onclick="selectYear(${y})">${y}</button>`).join('');
+  if (!projectData[currentYear]) {
+    currentYear = +years[0] || 2025;
+    document.getElementById('yearBtn').textContent = '📅 ' + currentYear;
+    renderProjects();
+  }
+}
+
+function addYear() {
+  const input = prompt('추가할 연도를 입력하세요 (예: 2026)');
+  if (!input) return;
+  const year = parseInt(input);
+  if (isNaN(year) || year < 2000 || year > 2100) { alert('유효한 연도를 입력하세요 (2000~2100)'); return; }
+  if (projectData[year]) { alert(year + '년은 이미 존재합니다.'); return; }
+  projectData[year] = [];
+  refreshYearDropdown();
+  populateAdminFilters();
+  populateHeartResetTargets();
+  document.getElementById('adminYearFilter').value = year;
+  renderAdminProjects();
+  renderAdminDashboard();
+}
+
+function deleteYear() {
+  const year = document.getElementById('adminYearFilter').value;
+  if (!year) return;
+  const projects = projectData[year] || [];
+  const msg = projects.length > 0
+    ? year + '년에 ' + projects.length + '개의 프로젝트가 있습니다. 모두 삭제됩니다. 계속하시겠습니까?'
+    : year + '년을 삭제하시겠습니까?';
+  if (!confirm(msg)) return;
+  dbDeleteYearProjects(year, projects);
+  projects.forEach(p => { delete hearts[p.id]; delete comments[p.id]; delete likedCards[p.id]; });
+  delete projectData[year];
+  save();
+  refreshYearDropdown();
+  populateAdminFilters();
+  populateHeartResetTargets();
+  renderAdminProjects();
+  renderAdminDashboard();
+  renderProjects();
+  updateStats();
+}
+
+function populateHeartResetTargets() {
+  const sel = document.getElementById('heartResetTarget');
+  sel.innerHTML = '<option value="all">전체 프로젝트</option>';
+  Object.keys(projectData).sort((a, b) => b - a).forEach(year => {
+    (projectData[year] || []).forEach(p => {
+      sel.innerHTML += `<option value="${p.id}">[${year}] ${esc(p.team)}</option>`;
+    });
+  });
+}
+
+// Dashboard
+function renderAdminDashboard() {
+  const allProjects = Object.values(projectData).flat();
+  const totalTeams = allProjects.length;
+  const totalMembers = allProjects.reduce((s, p) => s + p.members.length, 0);
+  const totalHearts = allProjects.reduce((s, p) => s + (hearts[p.id] || 0), 0);
+  const allComments = Object.values(comments).flat();
+  const totalComments = allComments.length;
+
+  const companiesSet = new Set();
+  const careerSet = new Set();
+  allProjects.forEach(p => {
+    if (p.company) companiesSet.add(p.company);
+    (p.members || []).forEach(m => { if (m.desiredCareer) careerSet.add(m.name); });
+  });
+  const totalCompanies = companiesSet.size;
+  const totalEmployed = allProjects.reduce((s, p) => s + (p.members || []).filter(m => m.career).length, 0);
+
+  const dbStatusLabel = firebaseConnected ? '🟢 연결됨' : (db ? '🟡 오프라인' : '🔴 미설정');
+  document.getElementById('adminStatsGrid').innerHTML = `
+    <div class="admin-stat-card"><div class="stat-icon">📁</div><div class="stat-num">${totalTeams}</div><div class="stat-desc">전체 프로젝트</div></div>
+    <div class="admin-stat-card"><div class="stat-icon">👥</div><div class="stat-num">${totalMembers}</div><div class="stat-desc">전체 참여 학생</div></div>
+    <div class="admin-stat-card"><div class="stat-icon">🏢</div><div class="stat-num">${totalCompanies}</div><div class="stat-desc">참여기업</div></div>
+    <div class="admin-stat-card"><div class="stat-icon">💼</div><div class="stat-num">${totalEmployed}</div><div class="stat-desc">취업 현황</div></div>
+    <div class="admin-stat-card"><div class="stat-icon">❤️</div><div class="stat-num">${totalHearts}</div><div class="stat-desc">전체 하트</div></div>
+    <div class="admin-stat-card"><div class="stat-icon">💬</div><div class="stat-num">${totalComments}</div><div class="stat-desc">전체 댓글</div></div>
+    <div class="admin-stat-card"><div class="stat-icon">🔗</div><div class="stat-num" style="font-size:18px">${dbStatusLabel}</div><div class="stat-desc">DB 연결 상태</div></div>
+  `;
+}
+
+// Projects
+function renderAdminProjects() {
+  const year = document.getElementById('adminYearFilter').value;
+  const projects = projectData[year] || [];
+  document.getElementById('adminProjectFormWrap').innerHTML = '';
+
+  if (projects.length === 0) {
+    document.getElementById('adminProjectTableWrap').innerHTML = '<p style="color:var(--text-secondary);padding:20px 0">등록된 프로젝트가 없습니다.</p>';
+    return;
+  }
+
+  document.getElementById('adminProjectTableWrap').innerHTML = `
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>ID</th><th>팀명</th><th>프로젝트</th><th>플랫폼</th><th>분반</th><th>참여기업</th><th>수상</th><th>멤버</th><th>하트</th><th>관리</th></tr></thead>
+        <tbody>
+          ${projects.map(p => `<tr>
+            <td>${p.id}</td>
+            <td><strong>${esc(p.team)}</strong></td>
+            <td>${esc(p.title)}</td>
+            <td><span class="badge ${p.platform}">${platformLabels[p.platform] || p.platform}</span></td>
+            <td>${p.classGroup}반</td>
+            <td>${p.company ? esc(p.company) : '-'}</td>
+            <td>${p.award === 'internal' ? '🏆 교내' : p.award === 'external' ? '🏅 교외' : p.award === 'both' ? '🏆🏅 교내+교외' : '-'}</td>
+            <td>${p.members.length}명</td>
+            <td>${hearts[p.id] || 0}</td>
+            <td style="white-space:nowrap">
+              <button class="admin-btn secondary" onclick="editProject(${p.id},'${year}')" style="padding:6px 10px;font-size:12px">✏️</button>
+              <button class="admin-btn danger" onclick="deleteProject(${p.id},'${year}')" style="padding:6px 10px;font-size:12px">🗑️</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function showProjectForm(mode, project, year) {
+  const years = Object.keys(projectData).sort((a, b) => b - a);
+  const isEdit = mode === 'edit' && project;
+  const members = isEdit ? project.members : [{ name: '', comment: '' }];
+
+  document.getElementById('adminProjectFormWrap').innerHTML = `
+    <div class="admin-form" id="projectForm">
+      <h3>${isEdit ? '✏️ 프로젝트 수정' : '➕ 프로젝트 추가'}</h3>
+      <div class="admin-form-grid">
+        ${!isEdit ? `<div class="admin-form-group"><label>연도 *</label><select id="pf_year">${years.map(y => `<option value="${y}">${y}년</option>`).join('')}</select></div>` : ''}
+        <div class="admin-form-group"><label>팀명 *</label><input id="pf_team" type="text" value="${isEdit ? esc(project.team) : ''}" placeholder="팀명 입력"></div>
+        <div class="admin-form-group"><label>플랫폼 *</label>
+          <select id="pf_platform">
+            <option value="xcopter" ${isEdit && project.platform === 'xcopter' ? 'selected' : ''}>Xcopter</option>
+            <option value="vtol" ${isEdit && project.platform === 'vtol' ? 'selected' : ''}>VTOL</option>
+            <option value="sw" ${isEdit && project.platform === 'sw' ? 'selected' : ''}>S/W</option>
+            <option value="hw" ${isEdit && project.platform === 'hw' ? 'selected' : ''}>H/W</option>
+            <option value="fc" ${isEdit && project.platform === 'fc' ? 'selected' : ''}>FC</option>
+            <option value="ai" ${isEdit && project.platform === 'ai' ? 'selected' : ''}>AI</option>
+            <option value="web" ${isEdit && project.platform === 'web' ? 'selected' : ''}>Web</option>
+            <option value="app" ${isEdit && project.platform === 'app' ? 'selected' : ''}>App</option>
+            <option value="iot" ${isEdit && project.platform === 'iot' ? 'selected' : ''}>IoT</option>
+            <option value="etc" ${isEdit && project.platform === 'etc' ? 'selected' : ''}>Etc</option>
+          </select>
+        </div>
+        <div class="admin-form-group"><label>분반 *</label>
+          <select id="pf_class">
+            <option value="A" ${isEdit && project.classGroup === 'A' ? 'selected' : ''}>A반</option>
+            <option value="B" ${isEdit && project.classGroup === 'B' ? 'selected' : ''}>B반</option>
+          </select>
+        </div>
+        <div class="admin-form-group"><label>수상</label>
+          <select id="pf_award">
+            <option value="" ${isEdit && !project.award ? 'selected' : ''}>없음</option>
+            <option value="internal" ${isEdit && project.award === 'internal' ? 'selected' : ''}>🏆 교내 수상</option>
+            <option value="external" ${isEdit && project.award === 'external' ? 'selected' : ''}>🏅 교외 수상</option>
+            <option value="both" ${isEdit && project.award === 'both' ? 'selected' : ''}>🏆🏅 교내+교외 수상</option>
+          </select>
+        </div>
+        <div class="admin-form-group full"><label>프로젝트 제목 *</label><input id="pf_title" type="text" value="${isEdit ? esc(project.title) : ''}" placeholder="프로젝트 제목"></div>
+        <div class="admin-form-group full"><label>프로젝트 설명 *</label><textarea id="pf_desc" placeholder="프로젝트 설명">${isEdit ? esc(project.desc) : ''}</textarea></div>
+        <div class="admin-form-group"><label>참여기업</label>
+          <select id="pf_company">
+            <option value="">없음</option>
+            ${companyData.map(c => `<option value="${esc(c.name)}" ${isEdit && project.company === c.name ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="admin-form-group"><label>이미지 URL</label><input id="pf_image" type="text" value="${isEdit ? esc(project.image || '') : ''}" placeholder="https://..."></div>
+      </div>
+      <h3 style="margin-top:18px">👥 멤버</h3>
+      <div class="admin-members-list" id="adminMembersList">
+        ${members.map((m, i) => `
+          <div class="admin-member-item" style="flex-wrap:wrap">
+            <input type="text" placeholder="이름 *" class="pf_member_name" value="${esc(m.name)}">
+            <input type="text" placeholder="한마디" class="pf_member_comment" value="${esc(m.comment || '')}">
+            <input type="text" placeholder="학번" class="pf_member_studentId" value="${esc(m.studentId || '')}" style="flex:0.7">
+            <input type="text" placeholder="연락처" class="pf_member_phone" value="${esc(m.phone || '')}" style="flex:0.7">
+            <input type="text" placeholder="이메일" class="pf_member_email" value="${esc(m.email || '')}">
+            <input type="text" placeholder="사진 URL" class="pf_member_photo" value="${esc(m.photo || '')}">
+            <input type="text" placeholder="경력" class="pf_member_career" value="${esc(m.career || '')}">
+            <input type="text" placeholder="이력" class="pf_member_history" value="${esc(m.history || '')}">
+            <input type="text" placeholder="희망진로" class="pf_member_desiredCareer" value="${esc(m.desiredCareer || '')}" style="flex:0.7">
+            <button class="admin-member-remove" onclick="this.parentElement.remove()">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <button class="admin-btn secondary" style="margin-top:8px" onclick="addMemberField()">➕ 멤버 추가</button>
+      <h3 style="margin-top:18px">🔗 링크</h3>
+      <div class="admin-form-grid">
+        <div class="admin-form-group"><label>중간발표 YouTube ID</label><input id="pf_video_interim" type="text" value="${isEdit ? esc(project.video?.interim || '') : ''}" placeholder="YouTube ID"></div>
+        <div class="admin-form-group"><label>최종발표 YouTube ID</label><input id="pf_video_final" type="text" value="${isEdit ? esc(project.video?.final || '') : ''}" placeholder="YouTube ID"></div>
+        <div class="admin-form-group"><label>발표자료 URL</label><input id="pf_doc" type="text" value="${isEdit ? esc(project.video?.doc || '') : ''}" placeholder="URL"></div>
+        <div class="admin-form-group"><label>사이트 URL</label><input id="pf_site" type="text" value="${isEdit ? esc(project.siteUrl || '') : ''}" placeholder="URL"></div>
+        <div class="admin-form-group full"><label>GitHub URL</label><input id="pf_github" type="text" value="${isEdit ? esc(project.githubUrl || '') : ''}" placeholder="URL"></div>
+      </div>
+      <div class="admin-form-actions">
+        <button class="admin-btn secondary" onclick="document.getElementById('adminProjectFormWrap').innerHTML=''">취소</button>
+        <button class="admin-btn primary" onclick="saveProject('${mode}','${year || ''}',${isEdit ? project.id : 'null'})">${isEdit ? '수정 완료' : '추가 완료'}</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('projectForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+function addMemberField() {
+  const list = document.getElementById('adminMembersList');
+  const div = document.createElement('div');
+  div.className = 'admin-member-item';
+  div.style.flexWrap = 'wrap';
+  div.innerHTML = '<input type="text" placeholder="이름 *" class="pf_member_name"><input type="text" placeholder="한마디" class="pf_member_comment"><input type="text" placeholder="학번" class="pf_member_studentId" style="flex:0.7"><input type="text" placeholder="연락처" class="pf_member_phone" style="flex:0.7"><input type="text" placeholder="이메일" class="pf_member_email"><input type="text" placeholder="사진 URL" class="pf_member_photo"><input type="text" placeholder="경력" class="pf_member_career"><input type="text" placeholder="이력" class="pf_member_history"><input type="text" placeholder="희망진로" class="pf_member_desiredCareer" style="flex:0.7"><button class="admin-member-remove" onclick="this.parentElement.remove()">✕</button>';
+  list.appendChild(div);
+}
+
+function saveProject(mode, editYear, editId) {
+  const team = document.getElementById('pf_team').value.trim();
+  const platform = document.getElementById('pf_platform').value;
+  const classGroup = document.getElementById('pf_class').value;
+  const title = document.getElementById('pf_title').value.trim();
+  const desc = document.getElementById('pf_desc').value.trim();
+  const company = document.getElementById('pf_company').value.trim();
+  const image = document.getElementById('pf_image').value.trim();
+
+  if (!team || !title || !desc) { alert('팀명, 제목, 설명은 필수 항목입니다.'); return; }
+
+  const names = document.querySelectorAll('.pf_member_name');
+  const memberComments = document.querySelectorAll('.pf_member_comment');
+  const memberStudentIds = document.querySelectorAll('.pf_member_studentId');
+  const memberPhones = document.querySelectorAll('.pf_member_phone');
+  const memberEmails = document.querySelectorAll('.pf_member_email');
+  const memberPhotos = document.querySelectorAll('.pf_member_photo');
+  const memberCareers = document.querySelectorAll('.pf_member_career');
+  const memberHistories = document.querySelectorAll('.pf_member_history');
+  const memberDesiredCareers = document.querySelectorAll('.pf_member_desiredCareer');
+  const members = [];
+  names.forEach((n, i) => {
+    const nm = n.value.trim();
+    if (nm) members.push({
+      name: nm,
+      comment: memberComments[i]?.value.trim() || '',
+      avatar: '',
+      studentId: memberStudentIds[i]?.value.trim() || '',
+      phone: memberPhones[i]?.value.trim() || '',
+      email: memberEmails[i]?.value.trim() || '',
+      photo: memberPhotos[i]?.value.trim() || '',
+      career: memberCareers[i]?.value.trim() || '',
+      history: memberHistories[i]?.value.trim() || '',
+      desiredCareer: memberDesiredCareers[i]?.value.trim() || ''
+    });
+  });
+  if (members.length === 0) { alert('최소 1명의 멤버가 필요합니다.'); return; }
+
+  const award = document.getElementById('pf_award').value;
+  const videoInterim = document.getElementById('pf_video_interim').value.trim();
+  const videoFinal = document.getElementById('pf_video_final').value.trim();
+  const doc = document.getElementById('pf_doc').value.trim();
+  const siteUrl = document.getElementById('pf_site').value.trim();
+  const githubUrl = document.getElementById('pf_github').value.trim();
+
+  const projectObj = {
+    team, platform, classGroup, title, desc, company, image, members, award,
+    video: { interim: videoInterim, final: videoFinal, doc: doc || '#' },
+    siteUrl, githubUrl
+  };
+
+  if (mode === 'edit' && editId !== null) {
+    const yearData = projectData[editYear];
+    if (yearData) {
+      const idx = yearData.findIndex(p => p.id === editId);
+      if (idx !== -1) {
+        projectObj.id = editId;
+        yearData[idx] = projectObj;
+        dbSaveProject(editYear, projectObj);
+      }
+    }
+  } else {
+    const targetYear = document.getElementById('pf_year').value;
+    if (!projectData[targetYear]) projectData[targetYear] = [];
+    const allIds = Object.values(projectData).flat().map(p => p.id);
+    projectObj.id = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
+    projectData[targetYear].push(projectObj);
+    dbSaveProject(targetYear, projectObj);
+  }
+
+  save();
+  refreshYearDropdown();
+  populateAdminFilters();
+  renderProjects();
+  renderAdminProjects();
+  document.getElementById('adminProjectFormWrap').innerHTML = '';
+  renderAdminDashboard();
+}
+
+function editProject(id, year) {
+  const project = (projectData[year] || []).find(p => p.id === id);
+  if (project) showProjectForm('edit', project, year);
+}
+
+function deleteProject(id, year) {
+  if (!confirm('이 프로젝트를 삭제하시겠습니까?')) return;
+  const yearData = projectData[year];
+  if (yearData) {
+    const idx = yearData.findIndex(p => p.id === id);
+    if (idx !== -1) {
+      yearData.splice(idx, 1);
+      delete hearts[id];
+      delete comments[id];
+      delete likedCards[id];
+      save();
+      dbDeleteProject(year, id);
+      dbResetHeart(id);
+      dbSaveComments(id, []);
+      renderProjects();
+      renderAdminProjects();
+      renderAdminDashboard();
+    }
+  }
+}
+
+// Comments admin
+function renderAdminComments() {
+  const yearFilter = document.getElementById('adminCommentYearFilter').value;
+  const projectFilter = document.getElementById('adminCommentProjectFilter').value;
+
+  // Populate project filter
+  let projectsList = [];
+  if (yearFilter === 'all') {
+    projectsList = Object.entries(projectData).flatMap(([y, ps]) => ps.map(p => ({ ...p, year: y })));
+  } else {
+    projectsList = (projectData[yearFilter] || []).map(p => ({ ...p, year: yearFilter }));
+  }
+  const projSel = document.getElementById('adminCommentProjectFilter');
+  const currentProjVal = projSel.value;
+  projSel.innerHTML = '<option value="all">전체 프로젝트</option>' + projectsList.map(p => `<option value="${p.id}">[${p.year}] ${esc(p.team)}</option>`).join('');
+  if (projSel.querySelector(`option[value="${currentProjVal}"]`)) projSel.value = currentProjVal;
+
+  // Render comments
+  const container = document.getElementById('adminCommentList');
+  let html = '';
+  let totalShown = 0;
+  projectsList.forEach(p => {
+    if (projectFilter && projectFilter !== 'all' && String(p.id) !== projectFilter) return;
+    const cmts = comments[p.id] || [];
+    cmts.forEach((c, i) => {
+      totalShown++;
+      html += `<div class="admin-comment-card">
+        <div class="comment-meta">
+          <span class="comment-project">[${p.year}] ${esc(p.team)}</span>
+          <button class="admin-btn danger" style="padding:4px 10px;font-size:11px" onclick="deleteAdminComment(${p.id},${i})">삭제</button>
+        </div>
+        <div class="comment-info">${esc(c.name)} <span style="font-weight:400;color:var(--text-secondary);font-size:12px">· ${relativeTime(c.ts)}</span></div>
+        <div class="comment-text">${esc(c.text)}</div>
+      </div>`;
+    });
+  });
+
+  if (totalShown === 0) html = '<p style="color:var(--text-secondary);padding:20px 0;text-align:center">댓글이 없습니다.</p>';
+  container.innerHTML = html;
+}
+
+function deleteAdminComment(projectId, index) {
+  if (!confirm('이 댓글을 삭제하시겠습니까?')) return;
+  const arr = comments[projectId] || [];
+  if (index >= 0 && index < arr.length) {
+    arr.splice(index, 1);
+    if (arr.length === 0) delete comments[projectId];
+    save();
+    dbSaveComments(projectId, comments[projectId] || []);
+    renderAdminComments();
+    renderAdminDashboard();
+    updateStats();
+    const el = document.getElementById('cc-' + projectId);
+    if (el) el.textContent = (comments[projectId] || []).length;
+  }
+}
+
+// ============================================================
+// ADMIN COMPANIES (참여기업 / 취업처)
+// ============================================================
+function showCompanyForm(mode, company) {
+  const isEdit = mode === 'edit' && company;
+  const allProjects = Object.entries(projectData).flatMap(([y, ps]) => ps.map(p => ({ ...p, year: y })));
+
+  document.getElementById('adminCompanyFormWrap').innerHTML = `
+    <div class="admin-form" id="companyForm">
+      <h3>${isEdit ? '✏️ 기업 정보 수정' : '➕ 기업 등록'}</h3>
+      <div class="admin-form-grid">
+        <div class="admin-form-group"><label>기업명 *</label><input id="cf_name" type="text" value="${isEdit ? esc(company.name) : ''}" placeholder="기업명"></div>
+        <div class="admin-form-group"><label>대표자</label><input id="cf_ceo" type="text" value="${isEdit ? esc(company.ceo || '') : ''}" placeholder="대표자명"></div>
+        <div class="admin-form-group"><label>사업자등록번호</label><input id="cf_bizNo" type="text" value="${isEdit ? esc(company.bizNo || '') : ''}" placeholder="000-00-00000"></div>
+        <div class="admin-form-group"><label>업종/업태</label><input id="cf_industry" type="text" value="${isEdit ? esc(company.industry || '') : ''}" placeholder="업종/업태"></div>
+        <div class="admin-form-group"><label>직무</label><input id="cf_jobPosition" type="text" value="${isEdit ? esc(company.jobPosition || '') : ''}" placeholder="채용 직무"></div>
+        <div class="admin-form-group"><label>연봉</label><input id="cf_salary" type="text" value="${isEdit ? esc(company.salary || '') : ''}" placeholder="예: 3,000만원"></div>
+        <div class="admin-form-group"><label>필수자격</label><input id="cf_requirements" type="text" value="${isEdit ? esc(company.requirements || '') : ''}" placeholder="필수 자격 요건"></div>
+        <div class="admin-form-group"><label>현장실습</label>
+          <select id="cf_internship">
+            <option value="" ${isEdit && !company.internship ? 'selected' : ''}>해당 없음</option>
+            <option value="available" ${isEdit && company.internship === 'available' ? 'selected' : ''}>현장실습 가능</option>
+            <option value="ongoing" ${isEdit && company.internship === 'ongoing' ? 'selected' : ''}>현장실습 진행중</option>
+            <option value="completed" ${isEdit && company.internship === 'completed' ? 'selected' : ''}>현장실습 완료</option>
+          </select>
+        </div>
+        <div class="admin-form-group full"><label>주소</label><input id="cf_address" type="text" value="${isEdit ? esc(company.address || '') : ''}" placeholder="기업 주소"></div>
+        <div class="admin-form-group"><label>연락처</label><input id="cf_phone" type="text" value="${isEdit ? esc(company.phone || '') : ''}" placeholder="대표 전화번호"></div>
+        <div class="admin-form-group"><label>홈페이지</label><input id="cf_website" type="text" value="${isEdit ? esc(company.website || '') : ''}" placeholder="https://..."></div>
+        <div class="admin-form-group full"><label>비고</label><textarea id="cf_note" placeholder="추가 메모">${isEdit ? esc(company.note || '') : ''}</textarea></div>
+        <div class="admin-form-group full"><label>연결 프로젝트</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" id="cf_linkedProjects">
+            ${allProjects.map(p => {
+              const checked = isEdit && (company.linkedProjects || []).includes(p.id) ? 'checked' : '';
+              return `<label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 10px">
+                <input type="checkbox" class="cf_proj_check" value="${p.id}" data-year="${p.year}" ${checked}> [${p.year}] ${esc(p.team)}
+              </label>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="admin-form-actions">
+        <button class="admin-btn secondary" onclick="document.getElementById('adminCompanyFormWrap').innerHTML=''">취소</button>
+        <button class="admin-btn primary" onclick="saveCompany('${mode}',${isEdit ? company.id : 'null'})">${isEdit ? '수정 완료' : '등록 완료'}</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('companyForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+function saveCompany(mode, editId) {
+  const name = document.getElementById('cf_name').value.trim();
+  if (!name) { alert('기업명은 필수입니다.'); return; }
+
+  const linkedProjects = [];
+  document.querySelectorAll('.cf_proj_check:checked').forEach(cb => linkedProjects.push(Number(cb.value)));
+
+  const obj = {
+    name,
+    ceo: document.getElementById('cf_ceo').value.trim(),
+    bizNo: document.getElementById('cf_bizNo').value.trim(),
+    industry: document.getElementById('cf_industry').value.trim(),
+    jobPosition: document.getElementById('cf_jobPosition').value.trim(),
+    salary: document.getElementById('cf_salary').value.trim(),
+    requirements: document.getElementById('cf_requirements').value.trim(),
+    internship: document.getElementById('cf_internship').value,
+    address: document.getElementById('cf_address').value.trim(),
+    phone: document.getElementById('cf_phone').value.trim(),
+    website: document.getElementById('cf_website').value.trim(),
+    note: document.getElementById('cf_note').value.trim(),
+    linkedProjects
+  };
+
+  if (mode === 'edit' && editId !== null) {
+    const idx = companyData.findIndex(c => c.id === editId);
+    if (idx !== -1) { obj.id = editId; companyData[idx] = obj; }
+  } else {
+    obj.id = companyData.length > 0 ? Math.max(...companyData.map(c => c.id)) + 1 : 1;
+    companyData.push(obj);
+  }
+
+  // 연결된 프로젝트의 company 필드 동기화
+  Object.entries(projectData).forEach(([year, projects]) => {
+    projects.forEach(p => {
+      if (linkedProjects.includes(p.id)) {
+        p.company = name;
+        dbSaveProject(year, p);
+      } else if (p.company === name && !linkedProjects.includes(p.id)) {
+        p.company = '';
+        dbSaveProject(year, p);
+      }
+    });
+  });
+
+  save();
+  dbSaveCompany(obj);
+  document.getElementById('adminCompanyFormWrap').innerHTML = '';
+  renderAdminCompanies();
+  renderAdminDashboard();
+  renderProjects();
+}
+
+function deleteCompany(id) {
+  const company = companyData.find(c => c.id === id);
+  if (!company) return;
+  if (!confirm(`"${company.name}" 기업을 삭제하시겠습니까?`)) return;
+
+  // 연결된 프로젝트의 company 필드 제거
+  Object.entries(projectData).forEach(([year, projects]) => {
+    projects.forEach(p => {
+      if (p.company === company.name) {
+        p.company = '';
+        dbSaveProject(year, p);
+      }
+    });
+  });
+
+  const idx = companyData.findIndex(c => c.id === id);
+  if (idx !== -1) companyData.splice(idx, 1);
+  save();
+  dbDeleteCompany(id);
+  renderAdminCompanies();
+  renderAdminDashboard();
+  renderProjects();
+}
+
+function renderAdminCompanies() {
+  const typeFilter = document.getElementById('adminCompanyTypeFilter').value;
+  const search = (document.getElementById('adminCompanySearch').value || '').toLowerCase();
+
+  const allProjects = Object.entries(projectData).flatMap(([y, ps]) => ps.map(p => ({ ...p, year: y })));
+  const container = document.getElementById('adminCompanyList');
+  let html = '';
+
+  const internshipLabels = { available: '실습 가능', ongoing: '진행중', completed: '완료' };
+
+  // 참여기업 섹션
+  if (typeFilter === 'all' || typeFilter === 'company') {
+    let list = [...companyData];
+    if (search) {
+      list = list.filter(c =>
+        c.name.toLowerCase().includes(search) ||
+        (c.ceo || '').toLowerCase().includes(search) ||
+        (c.industry || '').toLowerCase().includes(search) ||
+        (c.jobPosition || '').toLowerCase().includes(search)
+      );
+    }
+
+    html += `<h3 style="font-size:15px;font-weight:700;margin:16px 0 12px;color:var(--text);display:flex;align-items:center;gap:8px">🏢 참여기업 <span style="font-size:13px;font-weight:500;color:var(--text-secondary)">(${list.length}개)</span></h3>`;
+    if (list.length === 0) {
+      html += '<p style="color:var(--text-secondary);padding:12px 0;font-size:14px">등록된 참여기업이 없습니다. "➕ 기업 등록" 버튼으로 추가하세요.</p>';
+    } else {
+      html += '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">';
+      list.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
+        const linked = allProjects.filter(p => (c.linkedProjects || []).includes(p.id));
+        html += `<div class="admin-stat-card" style="padding:16px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+            <div>
+              <h4 style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:2px">🏢 ${esc(c.name)}</h4>
+              ${c.ceo ? `<span style="font-size:12px;color:var(--text-secondary)">대표: ${esc(c.ceo)}</span>` : ''}
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="admin-btn secondary" onclick="showCompanyForm('edit',companyData.find(x=>x.id===${c.id}))" style="padding:5px 10px;font-size:12px">✏️</button>
+              <button class="admin-btn danger" onclick="deleteCompany(${c.id})" style="padding:5px 10px;font-size:12px">🗑️</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;font-size:13px;margin-bottom:10px">
+            ${c.bizNo ? `<div><span style="color:var(--text-secondary)">사업자번호:</span> <strong>${esc(c.bizNo)}</strong></div>` : ''}
+            ${c.industry ? `<div><span style="color:var(--text-secondary)">업종/업태:</span> <strong>${esc(c.industry)}</strong></div>` : ''}
+            ${c.jobPosition ? `<div><span style="color:var(--text-secondary)">직무:</span> <strong>${esc(c.jobPosition)}</strong></div>` : ''}
+            ${c.salary ? `<div><span style="color:var(--text-secondary)">연봉:</span> <strong>${esc(c.salary)}</strong></div>` : ''}
+            ${c.requirements ? `<div><span style="color:var(--text-secondary)">필수자격:</span> <strong>${esc(c.requirements)}</strong></div>` : ''}
+            ${c.internship ? `<div><span style="color:var(--text-secondary)">현장실습:</span> <strong>${internshipLabels[c.internship] || c.internship}</strong></div>` : ''}
+            ${c.phone ? `<div><span style="color:var(--text-secondary)">연락처:</span> <strong>${esc(c.phone)}</strong></div>` : ''}
+            ${c.address ? `<div style="grid-column:1/-1"><span style="color:var(--text-secondary)">주소:</span> <strong>${esc(c.address)}</strong></div>` : ''}
+            ${c.website ? `<div><span style="color:var(--text-secondary)">홈페이지:</span> <a href="${esc(c.website)}" target="_blank" style="color:#ff4d00;font-weight:600">${esc(c.website)}</a></div>` : ''}
+          </div>
+          ${c.note ? `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;padding:8px;background:var(--bg);border-radius:6px">📝 ${esc(c.note)}</div>` : ''}
+          ${linked.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:6px"><span style="font-size:12px;color:var(--text-secondary);margin-right:4px">연결 프로젝트:</span>${linked.map(p => `<span class="badge ${p.platform}" style="font-size:11px;padding:3px 8px">[${p.year}] ${esc(p.team)}</span>`).join('')}</div>` : ''}
+        </div>`;
+      });
+      html += '</div>';
+    }
+  }
+
+  // 취업처(취업 현황) 섹션
+  if (typeFilter === 'all' || typeFilter === 'career') {
+    let employed = [];
+    allProjects.forEach(p => {
+      (p.members || []).forEach((m, mi) => {
+        if (m.career) {
+          employed.push({ member: m, memberIndex: mi, project: p, year: p.year });
+        }
+      });
+    });
+
+    if (search) {
+      employed = employed.filter(e =>
+        e.member.name.toLowerCase().includes(search) ||
+        e.member.career.toLowerCase().includes(search) ||
+        e.project.team.toLowerCase().includes(search)
+      );
+    }
+
+    const careerMap = {};
+    employed.forEach(e => {
+      const key = e.member.career;
+      if (!careerMap[key]) careerMap[key] = [];
+      careerMap[key].push(e);
+    });
+
+    const careerEntries = Object.entries(careerMap).sort((a, b) => a[0].localeCompare(b[0]));
+
+    html += `<h3 style="font-size:15px;font-weight:700;margin:16px 0 12px;color:var(--text);display:flex;align-items:center;gap:8px">💼 취업 현황 <span style="font-size:13px;font-weight:500;color:var(--text-secondary)">(${employed.length}명, ${careerEntries.length}개 기업)</span></h3>`;
+    if (employed.length === 0) {
+      html += '<p style="color:var(--text-secondary);padding:12px 0;font-size:14px">등록된 취업 정보가 없습니다. 참여학생 상세 정보의 "경력" 필드에 취업처를 입력하세요.</p>';
+    } else {
+      html += '<div style="display:flex;flex-direction:column;gap:10px">';
+      careerEntries.forEach(([career, members]) => {
+        html += `<div class="admin-stat-card" style="padding:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <h4 style="font-size:15px;font-weight:700;color:var(--text)">💼 ${esc(career)}</h4>
+            <span style="font-size:12px;color:var(--text-secondary)">${members.length}명</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            ${members.map(e => `
+              <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer" onclick="switchAdminSection('students');showStudentDetail('${e.year}',${e.project.id},${e.memberIndex})">
+                <div style="width:28px;height:28px;border-radius:50%;background:${gradients[e.memberIndex % gradients.length]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0;overflow:hidden">
+                  ${(e.member.photo || e.member.avatar) ? `<img src="${esc(e.member.photo || e.member.avatar)}" style="width:100%;height:100%;object-fit:cover">` : esc(getInitial(e.member.name))}
+                </div>
+                <div>
+                  <div style="font-weight:600;color:var(--text)">${esc(e.member.name)}</div>
+                  <div style="font-size:11px;color:var(--text-secondary)">${esc(e.project.team)} (${e.year})</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+    }
+  }
+
+  container.innerHTML = html;
+}
+
+// Data management
+function exportAllData() {
+  const data = {
+    projectData: projectData,
+    hearts: hearts,
+    comments: comments,
+    likedCards: likedCards,
+    companyData: companyData,
+    exportedAt: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'creative-collection-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.projectData) { alert('유효하지 않은 데이터 형식입니다.'); return; }
+      if (!confirm('현재 데이터를 가져온 데이터로 교체하시겠습니까?')) return;
+
+      // Replace projectData
+      Object.keys(projectData).forEach(k => delete projectData[k]);
+      Object.assign(projectData, data.projectData);
+
+      // Replace hearts, comments, likedCards
+      if (data.hearts) { Object.keys(hearts).forEach(k => delete hearts[k]); Object.assign(hearts, data.hearts); }
+      if (data.comments) { Object.keys(comments).forEach(k => delete comments[k]); Object.assign(comments, data.comments); }
+      if (data.likedCards) { Object.keys(likedCards).forEach(k => delete likedCards[k]); Object.assign(likedCards, data.likedCards); }
+      if (data.companyData) { companyData.length = 0; data.companyData.forEach(c => companyData.push(c)); }
+
+      save();
+      // Firebase에도 업로드
+      if (db) {
+        syncLocalToFirebaseQuiet().then(() => {
+          console.log('[Firebase] 가져온 데이터 동기화 완료');
+        }).catch(err => {
+          console.error('[Firebase] 가져온 데이터 동기화 실패:', err);
+        });
+      }
+      renderProjects();
+      renderAdminDashboard();
+      populateAdminFilters();
+      populateHeartResetTargets();
+      alert('데이터를 성공적으로 가져왔습니다.');
+    } catch (err) {
+      alert('파일을 읽는 중 오류가 발생했습니다: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function resetHearts() {
+  const target = document.getElementById('heartResetTarget').value;
+  if (target === 'all') {
+    if (!confirm('전체 프로젝트의 하트를 초기화하시겠습니까?')) return;
+    Object.keys(hearts).forEach(k => delete hearts[k]);
+    Object.keys(likedCards).forEach(k => delete likedCards[k]);
+    dbResetAllHearts();
+  } else {
+    const id = parseInt(target);
+    if (!confirm('선택한 프로젝트의 하트를 초기화하시겠습니까?')) return;
+    delete hearts[id];
+    delete likedCards[id];
+    dbResetHeart(id);
+  }
+  save();
+  renderProjects();
+  renderAdminDashboard();
+  updateStats();
+}
+
+// ============================================================
+// STUDENT PROFILE MODAL (Main Page)
+// ============================================================
+function openStudentProfile(year, projectId, memberIndex) {
+  const projects = projectData[year] || [];
+  const project = projects.find(p => p.id === projectId);
+  if (!project || !project.members[memberIndex]) return;
+  const m = project.members[memberIndex];
+  const content = document.getElementById('studentProfileContent');
+  const infoOrEmpty = (val) => val ? esc(val) : '<span class="info-empty">정보 없음</span>';
+
+  content.innerHTML = `
+    <div class="student-profile-header">
+      <div class="student-profile-photo" style="background:${gradients[memberIndex % gradients.length]}">
+        ${(m.photo || m.avatar) ? `<img src="${esc(m.photo || m.avatar)}" alt="${esc(m.name)}">` : esc(getInitial(m.name))}
+      </div>
+      <div class="student-profile-header-info">
+        <h3>${esc(m.name)}</h3>
+        <div class="student-id">${m.studentId ? esc(m.studentId) : '학번 미등록'}</div>
+        <div class="student-team">${esc(project.team)} (${year})</div>
+      </div>
+    </div>
+    <div class="student-profile-info">
+      <div class="student-profile-info-item"><span class="info-icon">📞</span><span class="info-label">연락처</span><span class="info-value">${infoOrEmpty(m.phone)}</span></div>
+      <div class="student-profile-info-item"><span class="info-icon">📧</span><span class="info-label">이메일</span><span class="info-value">${infoOrEmpty(m.email)}</span></div>
+      <div class="student-profile-info-item"><span class="info-icon">💼</span><span class="info-label">경력</span><span class="info-value">${infoOrEmpty(m.career)}</span></div>
+      <div class="student-profile-info-item"><span class="info-icon">📋</span><span class="info-label">이력</span><span class="info-value">${infoOrEmpty(m.history)}</span></div>
+      <div class="student-profile-info-item"><span class="info-icon">🎯</span><span class="info-label">희망진로</span><span class="info-value">${infoOrEmpty(m.desiredCareer)}</span></div>
+      <div class="student-profile-info-item"><span class="info-icon">💬</span><span class="info-label">한마디</span><span class="info-value">${infoOrEmpty(m.comment)}</span></div>
+      <div class="student-profile-info-item" style="flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;gap:6px"><span class="info-icon">🏅</span><span class="info-label">디지털 뱃지</span></div>
+        ${(m.badges && m.badges.length > 0) ? renderBadges(m.badges) : '<span class="info-empty" style="font-size:13px">취득한 뱃지 없음</span>'}
+      </div>
+    </div>
+  `;
+  document.getElementById('studentProfileModal').classList.add('show');
+}
+
+function closeStudentProfile(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('studentProfileModal').classList.remove('show');
+}
+
+// ============================================================
+// ADMIN STUDENTS
+// ============================================================
+function renderAdminStudents() {
+  const yearFilter = document.getElementById('adminStudentYearFilter').value;
+  const projectFilter = document.getElementById('adminStudentProjectFilter').value;
+  const search = (document.getElementById('adminStudentSearch').value || '').toLowerCase();
+
+  // Populate project filter
+  let projectsList = [];
+  if (yearFilter === 'all') {
+    projectsList = Object.entries(projectData).flatMap(([y, ps]) => ps.map(p => ({ ...p, year: y })));
+  } else {
+    projectsList = (projectData[yearFilter] || []).map(p => ({ ...p, year: yearFilter }));
+  }
+  const projSel = document.getElementById('adminStudentProjectFilter');
+  const currentProjVal = projSel.value;
+  projSel.innerHTML = '<option value="all">전체 프로젝트</option>' + projectsList.map(p => `<option value="${p.id}">[${p.year}] ${esc(p.team)}</option>`).join('');
+  if (projSel.querySelector(`option[value="${currentProjVal}"]`)) projSel.value = currentProjVal;
+
+  // Collect students
+  let students = [];
+  projectsList.forEach(p => {
+    if (projectFilter && projectFilter !== 'all' && String(p.id) !== projectFilter) return;
+    p.members.forEach((m, mi) => {
+      students.push({ member: m, memberIndex: mi, project: p, year: p.year });
+    });
+  });
+
+  // Search filter
+  if (search) {
+    students = students.filter(s =>
+      s.member.name.toLowerCase().includes(search) ||
+      (s.member.studentId || '').toLowerCase().includes(search) ||
+      s.project.team.toLowerCase().includes(search)
+    );
+  }
+
+  const grid = document.getElementById('adminStudentGrid');
+  if (students.length === 0) {
+    grid.innerHTML = '<p style="color:var(--text-secondary);padding:20px 0;grid-column:1/-1">학생이 없습니다.</p>';
+  } else {
+    grid.innerHTML = students.map((s, idx) => `
+      <div class="admin-student-card" onclick="showStudentDetail('${s.year}',${s.project.id},${s.memberIndex})" data-student-idx="${idx}" style="position:relative">
+        <div class="student-card-photo" style="background:${gradients[s.memberIndex % gradients.length]}">
+          ${(s.member.photo || s.member.avatar) ? `<img src="${esc(s.member.photo || s.member.avatar)}" alt="${esc(s.member.name)}">` : esc(getInitial(s.member.name))}
+        </div>
+        <div class="student-card-info">
+          <div class="student-card-name">${esc(s.member.name)}</div>
+          <div class="student-card-meta">${s.member.studentId ? esc(s.member.studentId) + ' · ' : ''}${esc(s.project.team)} (${s.year})</div>
+          <div class="student-card-meta"><span class="badge ${s.project.platform}" style="font-size:10px;padding:1px 6px">${platformLabels[s.project.platform] || s.project.platform}</span>${(s.member.badges || []).length > 0 ? ` <span style="font-size:10px;color:var(--text-secondary)">🏅${s.member.badges.length}</span>` : ''}</div>
+        </div>
+        <button class="admin-btn danger" style="position:absolute;top:8px;right:8px;padding:4px 8px;font-size:11px" onclick="event.stopPropagation();deleteStudent('${s.year}',${s.project.id},${s.memberIndex})">🗑️</button>
+      </div>
+    `).join('');
+  }
+  document.getElementById('adminStudentDetailWrap').innerHTML = '';
+}
+
+function showStudentDetail(year, projectId, memberIndex) {
+  const projects = projectData[year] || [];
+  const project = projects.find(p => p.id === projectId);
+  if (!project || !project.members[memberIndex]) return;
+  const m = project.members[memberIndex];
+
+  document.getElementById('adminStudentDetailWrap').innerHTML = `
+    <div class="admin-student-detail">
+      <h3>📝 ${esc(m.name)} 상세 정보 (${esc(project.team)} · ${year})</h3>
+      <div class="admin-form-grid">
+        <div class="admin-form-group"><label>이름 (읽기전용)</label><input type="text" value="${esc(m.name)}" readonly style="opacity:.6"></div>
+        <div class="admin-form-group"><label>학번</label><input type="text" id="sd_studentId" value="${esc(m.studentId || '')}" placeholder="학번"></div>
+        <div class="admin-form-group"><label>연락처</label><input type="text" id="sd_phone" value="${esc(m.phone || '')}" placeholder="010-0000-0000"></div>
+        <div class="admin-form-group"><label>이메일</label><input type="text" id="sd_email" value="${esc(m.email || '')}" placeholder="example@email.com"></div>
+        <div class="admin-form-group full"><label>프로필 사진 URL</label><input type="text" id="sd_photo" value="${esc(m.photo || '')}" placeholder="https://..."></div>
+        <div class="admin-form-group full"><label>경력</label><textarea id="sd_career" placeholder="경력 사항">${esc(m.career || '')}</textarea></div>
+        <div class="admin-form-group full"><label>이력</label><textarea id="sd_history" placeholder="이력 사항">${esc(m.history || '')}</textarea></div>
+        <div class="admin-form-group"><label>희망진로</label><input type="text" id="sd_desiredCareer" value="${esc(m.desiredCareer || '')}" placeholder="희망진로"></div>
+        <div class="admin-form-group full"><label>🏅 디지털 뱃지</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+            ${badgeDefs.map(bd => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 12px;transition:all .2s">
+              <input type="checkbox" class="sd_badge_check" value="${bd.key}" ${(m.badges || []).includes(bd.key) ? 'checked' : ''}> ${bd.icon} ${bd.label}
+            </label>`).join('')}
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;margin-top:8px">
+            <input type="text" id="sd_customBadge" placeholder="기타 뱃지 직접 입력" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--input-bg);color:var(--text);outline:none">
+            <button class="admin-btn secondary" onclick="addCustomBadge()" style="padding:8px 14px;font-size:12px;white-space:nowrap">➕ 추가</button>
+          </div>
+          <div id="sd_customBadgeList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+            ${(m.badges || []).filter(b => !badgeDefs.find(d => d.key === b)).map(b => `<span class="digital-badge b-custom" style="cursor:pointer" onclick="this.remove()" title="클릭하여 제거">${esc(b)} ✕</span>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="admin-form-actions">
+        <button class="admin-btn danger" onclick="deleteStudent('${year}',${projectId},${memberIndex})">🗑️ 학생 삭제</button>
+        <button class="admin-btn secondary" onclick="document.getElementById('adminStudentDetailWrap').innerHTML=''">취소</button>
+        <button class="admin-btn primary" onclick="saveStudentDetail('${year}',${projectId},${memberIndex})">저장</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('adminStudentDetailWrap').scrollIntoView({ behavior: 'smooth' });
+}
+
+function saveStudentDetail(year, projectId, memberIndex) {
+  const projects = projectData[year] || [];
+  const project = projects.find(p => p.id === projectId);
+  if (!project || !project.members[memberIndex]) return;
+  const m = project.members[memberIndex];
+
+  m.studentId = document.getElementById('sd_studentId').value.trim();
+  m.phone = document.getElementById('sd_phone').value.trim();
+  m.email = document.getElementById('sd_email').value.trim();
+  m.photo = document.getElementById('sd_photo').value.trim();
+  m.career = document.getElementById('sd_career').value.trim();
+  m.history = document.getElementById('sd_history').value.trim();
+  m.desiredCareer = document.getElementById('sd_desiredCareer').value.trim();
+
+  // 디지털 뱃지 저장
+  const badges = [];
+  document.querySelectorAll('.sd_badge_check:checked').forEach(cb => badges.push(cb.value));
+  document.querySelectorAll('#sd_customBadgeList .digital-badge').forEach(el => {
+    const text = el.textContent.replace(' ✕', '').trim();
+    if (text && !badges.includes(text)) badges.push(text);
+  });
+  m.badges = badges;
+
+  save();
+  dbSaveProject(year, project);
+  renderProjects();
+  renderAdminStudents();
+  alert('학생 정보가 저장되었습니다.');
+}
+
+function addCustomBadge() {
+  const input = document.getElementById('sd_customBadge');
+  const val = input.value.trim();
+  if (!val) return;
+  const list = document.getElementById('sd_customBadgeList');
+  const span = document.createElement('span');
+  span.className = 'digital-badge b-custom';
+  span.style.cursor = 'pointer';
+  span.title = '클릭하여 제거';
+  span.textContent = val + ' ✕';
+  span.onclick = function() { this.remove(); };
+  list.appendChild(span);
+  input.value = '';
+}
+
+function deleteStudent(year, projectId, memberIndex) {
+  const projects = projectData[year] || [];
+  const project = projects.find(p => p.id === projectId);
+  if (!project || !project.members[memberIndex]) return;
+  const name = project.members[memberIndex].name;
+  if (!confirm(`"${name}" 학생을 "${project.team}" 프로젝트에서 삭제하시겠습니까?`)) return;
+  project.members.splice(memberIndex, 1);
+  save();
+  dbSaveProject(year, project);
+  renderProjects();
+  renderAdminStudents();
+  renderAdminDashboard();
+  updateStats();
+}
+
+// Keyboard shortcut
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+    e.preventDefault();
+    const overlay = document.getElementById('adminOverlay');
+    if (overlay.classList.contains('show')) closeAdminPanel();
+    else openAdminPanel();
+  }
+});
+</script>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').then(r=>console.log('SW registered',r.scope)).catch(e=>console.log('SW failed',e));
+}
+</script>
+</body>
+</html>
