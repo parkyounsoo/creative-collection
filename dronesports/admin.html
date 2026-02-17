@@ -824,6 +824,27 @@ STEAM 교육 협회</textarea></div>
 
         <!-- 자격증 접수 관리 -->
         <div class="panel" id="panel-applications">
+            <!-- CSV 업로드 -->
+            <div class="admin-card" style="margin-bottom:20px;">
+                <h3>&#128228; CSV 일괄 업로드</h3>
+                <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">CSV 파일을 업로드하여 접수 내역을 일괄 등록합니다.</p>
+                <div id="csvDropZone" style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;margin-bottom:16px;cursor:pointer;transition:border-color .2s;"
+                    ondragover="event.preventDefault();this.style.borderColor='var(--blue)'"
+                    ondragleave="this.style.borderColor='var(--border)'"
+                    ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleCSVDrop(event)">
+                    <div style="font-size:32px;margin-bottom:8px;">&#128196;</div>
+                    <p style="font-size:14px;margin-bottom:4px;">CSV 파일을 드래그하거나 아래 버튼으로 선택하세요</p>
+                    <p style="font-size:12px;color:var(--text2);">형식: 이름, 연락처, 이메일, 자격증, 비고, 상태</p>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <label class="header-btn primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                        &#128193; CSV 파일 선택
+                        <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="uploadCSV(this)">
+                    </label>
+                    <button class="header-btn" onclick="downloadCSVTemplate()">&#128203; 양식 다운로드</button>
+                    <button class="header-btn" onclick="exportApplicationsCSV()">&#11015; 데이터 내보내기</button>
+                </div>
+            </div>
             <div class="search-bar">
                 <input type="text" id="appSearch" placeholder="이름 또는 자격증으로 검색...">
                 <select id="appFilter">
@@ -836,9 +857,9 @@ STEAM 교육 협회</textarea></div>
             <div class="admin-card">
                 <h3>&#128203; 자격증 접수 목록 <span class="card-badge" id="appCount">0건</span></h3>
                 <table class="admin-table">
-                    <thead><tr><th>이름</th><th>연락처</th><th>자격증</th><th>접수일</th><!-- <th>입금</th> --><th>상태</th><th>관리</th></tr></thead>
+                    <thead><tr><th>이름</th><th>연락처</th><th>이메일</th><th>자격증</th><th>접수일</th><th>상태</th><th>비고</th><th>관리</th></tr></thead>
                     <tbody id="appTableBody">
-                        <tr><td colspan="7"><div class="empty-state"><div class="icon">&#128203;</div><p>접수 내역이 없습니다.</p></div></td></tr>
+                        <tr><td colspan="8"><div class="empty-state"><div class="icon">&#128203;</div><p>접수 내역이 없습니다.</p></div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -981,6 +1002,16 @@ STEAM 교육 협회</textarea></div>
                 <option>드론비행지도사</option>
                 <option>IoT융합메이커지도사</option>
             </select>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>접수일</label><input type="date" id="appDate"></div>
+            <div class="form-group"><label>상태</label>
+                <select id="appStatus">
+                    <option value="pending">대기중</option>
+                    <option value="approved">승인</option>
+                    <option value="rejected">반려</option>
+                </select>
+            </div>
         </div>
         <div class="form-group"><label>비고</label><textarea id="appNote" placeholder="추가 사항..." style="min-height:80px;"></textarea></div>
         <!-- 결제 기능 비활성화됨
@@ -1217,7 +1248,7 @@ const panelTitles = {
 };
 
 const panelActions = {
-    applications: '<button class="header-btn primary" onclick="openModal(\'appModal\')">+ 접수 등록</button>',
+    applications: '<button class="header-btn" onclick="exportApplicationsCSV()">&#11015; 내보내기</button><button class="header-btn primary" onclick="openAppModal()">+ 접수 등록</button>',
     members: '<button class="header-btn primary" onclick="openModal(\'memberModal\')">+ 회원 등록</button>',
     notices: '<button class="header-btn primary" onclick="openModal(\'noticeModal\')">+ 공지 작성</button>',
     about: '<button class="header-btn primary" onclick="saveContent(\'about\')">저장</button>',
@@ -1307,6 +1338,94 @@ loadContent();
 function getApplications() { return DB.get('applications', []); }
 function setApplications(apps) { DB.set('applications', apps); }
 
+// CSV 업로드
+function uploadCSV(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        parseAndSaveCSV(e.target.result);
+        input.value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+}
+
+function handleCSVDrop(event) {
+    const file = event.dataTransfer.files[0];
+    if (!file || !file.name.endsWith('.csv')) { showToast('CSV 파일만 업로드 가능합니다.', true); return; }
+    const reader = new FileReader();
+    reader.onload = function(e) { parseAndSaveCSV(e.target.result); };
+    reader.readAsText(file, 'UTF-8');
+}
+
+function parseAndSaveCSV(text) {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    const apps = getApplications();
+    let added = 0;
+    for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        if (!cols[0]) continue;
+        const statusMap = { '승인': 'approved', '반려': 'rejected', '대기': 'pending', '대기중': 'pending' };
+        apps.unshift({
+            id: Date.now() + i,
+            name: cols[0] || '',
+            phone: cols[1] || '',
+            email: cols[2] || '',
+            cert: cols[3] || 'AI자율주행운전지도사',
+            note: cols[4] || '',
+            payment: 'unpaid',
+            date: new Date().toISOString().slice(0, 10),
+            status: statusMap[cols[5]] || cols[5] || 'pending'
+        });
+        added++;
+    }
+    setApplications(apps);
+    renderApplications();
+    updateBadge();
+    showToast(`${added}건이 업로드되었습니다.`);
+}
+
+// CSV 양식 다운로드
+function downloadCSVTemplate() {
+    const header = '이름,연락처,이메일,자격증,비고,상태';
+    const sample = '홍길동,010-1234-5678,hong@email.com,AI자율주행운전지도사,,대기중';
+    const blob = new Blob(['\uFEFF' + header + '\n' + sample], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '자격증접수_양식.csv';
+    a.click();
+}
+
+// 데이터 내보내기
+function exportApplicationsCSV() {
+    const apps = getApplications();
+    if (!apps.length) { showToast('내보낼 데이터가 없습니다.', true); return; }
+    const statusLabel = { pending: '대기중', approved: '승인', rejected: '반려' };
+    const header = '이름,연락처,이메일,자격증,접수일,상태,비고';
+    const rows = apps.map(a =>
+        [a.name, a.phone, a.email, a.cert, a.date, statusLabel[a.status] || a.status, a.note]
+        .map(v => `"${(v || '').replace(/"/g, '""')}"`).join(',')
+    );
+    const csv = '\uFEFF' + header + '\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `자격증접수_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+}
+
+function openAppModal() {
+    document.getElementById('appDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('appStatus').value = 'pending';
+    openModal('appModal');
+}
+
+function updateBadge() {
+    const count = getApplications().filter(a => a.status === 'pending').length;
+    const badge = document.getElementById('appBadge');
+    if (badge) badge.textContent = count;
+}
+
 function saveApplication() {
     const app = {
         id: Date.now(),
@@ -1315,9 +1434,9 @@ function saveApplication() {
         email: document.getElementById('appEmail').value,
         cert: document.getElementById('appCert').value,
         note: document.getElementById('appNote').value,
-        payment: 'unpaid', // 결제 기능 비활성화 - 기본값 설정
-        date: new Date().toISOString().slice(0, 10),
-        status: 'pending'
+        payment: 'unpaid',
+        date: document.getElementById('appDate').value || new Date().toISOString().slice(0, 10),
+        status: document.getElementById('appStatus').value || 'pending'
     };
     if (!app.name || !app.cert) { showToast('이름과 자격증을 입력하세요.', true); return; }
     const apps = getApplications();
@@ -1328,8 +1447,10 @@ function saveApplication() {
     document.getElementById('appPhone').value = '';
     document.getElementById('appEmail').value = '';
     document.getElementById('appNote').value = '';
-    // document.getElementById('appPayment').value = 'unpaid'; // 결제 기능 비활성화
+    document.getElementById('appDate').value = '';
+    document.getElementById('appStatus').value = 'pending';
     renderApplications();
+    updateBadge();
     refreshDashboard();
     showToast('접수가 등록되었습니다.');
 }
@@ -1377,9 +1498,13 @@ function renderApplications() {
         return;
     }
     tbody.innerHTML = filtered.map(a => `<tr>
-        <td><strong>${a.name}</strong></td><td>${a.phone||'-'}</td><td>${a.cert}</td><td>${a.date}</td>
-        <!--<td><span class="status-badge ${a.payment==='paid'?'approved':'pending'}" style="cursor:pointer;" onclick="togglePayment(${a.id})">${a.payment==='paid'?'입금완료':'미입금'}</span></td>-->
-        <td><span class="status-badge ${a.status}">${{pending:'대기중',approved:'승인',rejected:'반려'}[a.status]}</span></td>
+        <td><strong>${a.name}</strong></td>
+        <td>${a.phone||'-'}</td>
+        <td>${a.email||'-'}</td>
+        <td style="font-size:12px;">${a.cert}</td>
+        <td>${a.date}</td>
+        <td><span class="status-badge ${a.status}">${{pending:'대기중',approved:'승인',rejected:'반려'}[a.status]||a.status}</span></td>
+        <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.note||'-'}</td>
         <td>
             ${a.status==='pending'?`<button class="action-btn approve" onclick="updateAppStatus(${a.id},'approved')">승인</button><button class="action-btn reject" onclick="updateAppStatus(${a.id},'rejected')">반려</button>`:''}
             <button class="action-btn delete" onclick="deleteApp(${a.id})">삭제</button>
