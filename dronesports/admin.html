@@ -936,9 +936,9 @@ STEAM 교육 협회</textarea></div>
             </div>
             <div class="admin-card">
                 <h3>&#128272; Firebase 설정</h3>
-                <div class="form-group"><label>프로젝트 ID</label><input id="fbProjectId" value="drone"></div>
-                <div class="form-group"><label>API Key</label><input id="fbApiKey" placeholder="Firebase API Key 입력"></div>
-                <div class="form-group"><label>Auth Domain</label><input id="fbAuthDomain" placeholder="drone.firebaseapp.com"></div>
+                <div class="form-group"><label>프로젝트 ID</label><input id="fbProjectId" value="kydsa-drone"></div>
+                <div class="form-group"><label>API Key</label><input id="fbApiKey" value="AIzaSyB7le1awZES3gipqwdB7N10piVC6In_Crc"></div>
+                <div class="form-group"><label>Auth Domain</label><input id="fbAuthDomain" value="kydsa-drone.firebaseapp.com"></div>
                 <p style="font-size:12px;color:var(--text2);margin-top:8px;">* Firebase Console에서 프로젝트 설정 > 일반에서 확인할 수 있습니다.</p>
             </div>
             <div class="admin-card">
@@ -1668,16 +1668,15 @@ renderNotices();
 
 // ========== Firebase Init ==========
 (async function() {
-    const savedSettings = DB.get('content_settings', {});
-    const apiKey = savedSettings.fbApiKey;
-    if (apiKey) {
-        const config = {
-            apiKey: apiKey,
-            authDomain: savedSettings.fbAuthDomain || 'drone.firebaseapp.com',
-            projectId: savedSettings.fbProjectId || 'drone',
-        };
-        await loadFirebase(config);
-    }
+    const config = {
+        apiKey: "AIzaSyB7le1awZES3gipqwdB7N10piVC6In_Crc",
+        authDomain: "kydsa-drone.firebaseapp.com",
+        projectId: "kydsa-drone",
+        storageBucket: "kydsa-drone.firebasestorage.app",
+        messagingSenderId: "886061583737",
+        appId: "1:886061583737:web:df0261a522f3c66194f3a8"
+    };
+    await loadFirebase(config);
 })();
 </script>
 </body>
