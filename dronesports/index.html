@@ -3585,10 +3585,10 @@
         // 관리자 설정: 메인 제목 표시 여부 적용
         try {
             const settings = JSON.parse(localStorage.getItem('kydsa_content_settings') || '{}');
-            if (settings.hideSiteTitle) {
+            if (settings.hideSiteTitle !== false) {
                 document.querySelector('h1[data-i18n="hero-title"]')?.style.setProperty('display', 'none');
             }
-            if (settings.hideSiteTitleEn) {
+            if (settings.hideSiteTitleEn !== false) {
                 document.querySelector('h2[data-i18n="hero-subtitle"]')?.style.setProperty('display', 'none');
             }
         } catch(e) {}
