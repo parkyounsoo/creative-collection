@@ -1915,6 +1915,65 @@
             line-height: 1.4;
         }
 
+        /* Notice Section */
+        .notice-list { max-width: 860px; margin: 0 auto; }
+        .notice-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 20px 24px;
+            margin-bottom: 14px;
+            transition: transform .2s, box-shadow .2s;
+            cursor: default;
+        }
+        .notice-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(0,0,0,0.13);
+        }
+        .notice-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .notice-badge {
+            display: inline-block;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+            letter-spacing: .5px;
+        }
+        .notice-badge.notice  { background: #5b8def; }
+        .notice-badge.event   { background: #e67e22; }
+        .notice-badge.news    { background: #27ae60; }
+        .notice-date { font-size: 12px; color: var(--text-muted, #888); }
+        .notice-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 6px;
+            color: var(--text-primary);
+        }
+        .notice-content {
+            font-size: 14px;
+            color: var(--text-secondary, #aaa);
+            line-height: 1.7;
+            white-space: pre-line;
+            margin: 0;
+        }
+        .notice-empty {
+            text-align: center;
+            color: var(--text-muted, #888);
+            padding: 48px 0;
+            font-size: 15px;
+        }
+        @media (max-width: 768px) {
+            .notice-item { padding: 16px 18px; }
+            .notice-title { font-size: 15px; }
+        }
+
         /* Footer */
         .footer {
             background: var(--bg-secondary);
@@ -2058,6 +2117,7 @@
             <li><a href="#global" data-i18n="nav-global">글로벌</a></li>
             <li><a href="#roadmap" data-i18n="nav-roadmap">로드맵</a></li>
             <li><a href="#partners" data-i18n="nav-partners">파트너십</a></li>
+            <li id="nav-notices-item" style="display:none;"><a href="#notices" data-i18n="nav-notices">공지사항</a></li>
         </ul>
         <div style="display:flex;align-items:center;gap:8px;">
             <a href="admin.html" class="admin-btn" title="관리자 페이지">&#9881;</a>
@@ -2993,6 +3053,19 @@
     </div>
 </section>
 
+<!-- Notice Section -->
+<section class="section" id="notices" style="display:none;">
+    <div class="section-header fade-in">
+        <div class="badge-logo">&#128226;</div>
+        <h2 data-i18n="notice-title">공지사항</h2>
+        <p class="subtitle" data-i18n="notice-subtitle">NOTICE & EVENTS</p>
+        <hr>
+    </div>
+    <div class="notice-list fade-in" id="noticeListMain">
+        <div class="notice-empty">공지사항이 없습니다.</div>
+    </div>
+</section>
+
 <!-- Footer -->
 <footer class="footer">
     <div class="footer-content">
@@ -3041,6 +3114,9 @@
             'nav-global': '글로벌',
             'nav-roadmap': '로드맵',
             'nav-partners': '파트너십',
+            'nav-notices': '공지사항',
+            'notice-title': '공지사항',
+            'notice-subtitle': 'NOTICE & EVENTS',
 
             // Hero Section
             'hero-title': '청소년드론스포츠협회',
@@ -3333,6 +3409,9 @@
             'nav-global': 'Global',
             'nav-roadmap': 'Roadmap',
             'nav-partners': 'Partners',
+            'nav-notices': 'Notice',
+            'notice-title': 'Notice & Events',
+            'notice-subtitle': 'NOTICE & EVENTS',
 
             // Hero Section
             'hero-title': 'Korea Youth Drone Sports Association',
@@ -3657,7 +3736,41 @@
                 document.querySelector('h2[data-i18n="hero-subtitle"]')?.style.setProperty('display', 'none');
             }
         } catch(e) {}
+
+        // 공지사항 렌더링
+        loadNotices();
     });
+
+    function loadNotices() {
+        try {
+            const notices = JSON.parse(localStorage.getItem('kydsa_notices') || '[]');
+            const section = document.getElementById('notices');
+            const navItem = document.getElementById('nav-notices-item');
+            const container = document.getElementById('noticeListMain');
+            if (!notices.length) {
+                section.style.display = 'none';
+                navItem.style.display = 'none';
+                return;
+            }
+            section.style.display = '';
+            navItem.style.display = '';
+            const typeLabel = { notice: '공지', event: '이벤트', news: '뉴스' };
+            container.innerHTML = notices.map(n => `
+                <div class="notice-item fade-in">
+                    <div class="notice-meta">
+                        <span class="notice-badge ${n.type || 'notice'}">${typeLabel[n.type] || '공지'}</span>
+                        <span class="notice-date">${n.date || ''}</span>
+                    </div>
+                    <h4 class="notice-title">${n.title || ''}</h4>
+                    ${n.content ? `<p class="notice-content">${n.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>` : ''}
+                </div>
+            `).join('');
+            // 새로 추가된 fade-in 요소도 관찰 등록
+            container.querySelectorAll('.fade-in').forEach(el => {
+                if (typeof observer !== 'undefined') observer.observe(el);
+            });
+        } catch(e) {}
+    }
 
     // Scroll animation
     const observer = new IntersectionObserver((entries) => {
