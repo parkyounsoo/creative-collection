@@ -1845,14 +1845,18 @@ async function saveNotice() {
         link: link || '',
         date: new Date().toISOString().slice(0, 10)
     };
+    // Firestore 저장 시도, 실패 시 localStorage fallback
+    let savedToFirestore = false;
     if (_db) {
         try {
             await _db.collection('notices').add(notice);
             await syncNoticesFromFirestore();
+            savedToFirestore = true;
         } catch(e) {
-            showToast('저장 실패: ' + e.message, true); return;
+            console.warn('Firestore 저장 실패, localStorage 사용:', e.message);
         }
-    } else {
+    }
+    if (!savedToFirestore) {
         const notices = getNotices();
         notices.unshift(notice);
         setNotices(notices);
@@ -1867,15 +1871,18 @@ async function saveNotice() {
 }
 
 async function deleteNotice(id) {
+    let deletedFromFirestore = false;
     if (_db) {
         try {
             const snap = await _db.collection('notices').where('id', '==', id).get();
             await Promise.all(snap.docs.map(d => d.ref.delete()));
             await syncNoticesFromFirestore();
+            deletedFromFirestore = true;
         } catch(e) {
-            showToast('삭제 실패: ' + e.message, true); return;
+            console.warn('Firestore 삭제 실패, localStorage 사용:', e.message);
         }
-    } else {
+    }
+    if (!deletedFromFirestore) {
         let notices = getNotices();
         notices = notices.filter(n => n.id !== id);
         setNotices(notices);
