@@ -1052,7 +1052,7 @@ STEAM 교육 협회</textarea></div>
         <div class="form-group"><label>이메일</label><input id="memEmail" placeholder="이메일 주소"></div>
         <div class="form-group">
             <label>보유 자격증</label>
-            <select id="memCert">
+            <select id="memCert" onchange="onMemCertChange()">
                 <option value="">없음</option>
                 <option>AI자율주행운전지도사</option>
                 <option>드론레이싱지도사</option>
@@ -1061,7 +1061,14 @@ STEAM 교육 협회</textarea></div>
                 <option>IoT융합메이커지도사</option>
             </select>
         </div>
-        <div class="form-group"><label>자격증번호</label><input id="memCertNo" placeholder="자격증 번호 입력"></div>
+        <div class="form-group">
+            <label>자격증번호</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <input id="memCertNo" placeholder="자격증 번호 (자동배정 또는 직접 입력)" style="flex:1;">
+                <button type="button" class="header-btn" onclick="autoAssignCertNo()" style="white-space:nowrap;padding:0 12px;">&#128257; 자동배정</button>
+            </div>
+            <div id="certNoPreview" style="font-size:11px;color:var(--text-muted,#888);margin-top:4px;"></div>
+        </div>
         <input type="hidden" id="memAppId" value="">
         <div class="modal-actions">
             <button class="header-btn" onclick="closeModal('memberModal')">취소</button>
@@ -1579,6 +1586,50 @@ document.getElementById('appFilter')?.addEventListener('change', renderApplicati
 function getMembers() { return DB.get('members', []); }
 function setMembers(m) { DB.set('members', m); }
 
+// ---- 자격증 자동 번호 배정 ----
+const CERT_CODES = {
+    'AI자율주행운전지도사': 'AI',
+    '드론레이싱지도사':     'RC',
+    '드론축구지도사':       'FS',
+    '드론비행지도사':       'FL',
+    'IoT융합메이커지도사':  'IT'
+};
+
+function getNextCertNo(certName) {
+    const code = CERT_CODES[certName];
+    if (!code) return '';
+    const year = new Date().getFullYear();
+    const prefix = `KYDSA-${code}-${year}-`;
+    const members = getMembers();
+    let max = 0;
+    members.forEach(m => {
+        if (m.cert === certName && m.certNo && m.certNo.startsWith(prefix)) {
+            const num = parseInt(m.certNo.slice(prefix.length));
+            if (!isNaN(num) && num > max) max = num;
+        }
+    });
+    return prefix + String(max + 1).padStart(3, '0');
+}
+
+function autoAssignCertNo() {
+    const certName = document.getElementById('memCert').value;
+    if (!certName) { showToast('자격증을 먼저 선택하세요.', true); return; }
+    const nextNo = getNextCertNo(certName);
+    document.getElementById('memCertNo').value = nextNo;
+    document.getElementById('certNoPreview').textContent = '';
+}
+
+function onMemCertChange() {
+    const certName = document.getElementById('memCert').value;
+    const preview = document.getElementById('certNoPreview');
+    if (!certName) { preview.textContent = ''; return; }
+    const nextNo = getNextCertNo(certName);
+    preview.textContent = `다음 배정 번호: ${nextNo}`;
+    // 번호가 비어있으면 자동 입력
+    const certNoEl = document.getElementById('memCertNo');
+    if (!certNoEl.value) certNoEl.value = nextNo;
+}
+
 // 회원 중복 확인
 function findMember(email, name, phone) {
     return getMembers().find(m =>
@@ -1598,7 +1649,11 @@ function openMemberModalFromApp(appId) {
     document.getElementById('memPhone').value = app.phone || '';
     document.getElementById('memEmail').value = app.email || '';
     document.getElementById('memCert').value = app.cert || '';
-    document.getElementById('memCertNo').value = '';
+    // 자격증 선택에 맞는 다음 번호 자동 배정
+    const autoNo = app.cert ? getNextCertNo(app.cert) : '';
+    document.getElementById('memCertNo').value = autoNo;
+    const preview = document.getElementById('certNoPreview');
+    if (preview) preview.textContent = autoNo ? `다음 배정 번호: ${autoNo}` : '';
     document.getElementById('memAppId').value = appId;
     openModal('memberModal');
 }
@@ -1625,8 +1680,11 @@ function saveMember() {
     document.getElementById('memName').value = '';
     document.getElementById('memPhone').value = '';
     document.getElementById('memEmail').value = '';
+    document.getElementById('memCert').value = '';
     document.getElementById('memCertNo').value = '';
     document.getElementById('memAppId').value = '';
+    const preview = document.getElementById('certNoPreview');
+    if (preview) preview.textContent = '';
     renderMembers();
     renderApplications();
     refreshDashboard();
