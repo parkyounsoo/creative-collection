@@ -1061,6 +1061,7 @@ STEAM 교육 협회</textarea></div>
             </select>
         </div>
         <div class="form-group"><label>자격증번호</label><input id="memCertNo" placeholder="자격증 번호 입력"></div>
+        <input type="hidden" id="memAppId" value="">
         <div class="modal-actions">
             <button class="header-btn" onclick="closeModal('memberModal')">취소</button>
             <button class="header-btn primary" onclick="saveMember()">등록</button>
@@ -1497,19 +1498,26 @@ function renderApplications() {
         tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="icon">&#128203;</div><p>접수 내역이 없습니다.</p></div></td></tr>';
         return;
     }
-    tbody.innerHTML = filtered.map(a => `<tr>
+    tbody.innerHTML = filtered.map(a => {
+        const memberExists = findMember(a.email, a.name, a.phone);
+        return `<tr>
         <td><strong>${a.name}</strong></td>
         <td>${a.phone||'-'}</td>
         <td>${a.email||'-'}</td>
         <td style="font-size:12px;">${a.cert}</td>
         <td>${a.date}</td>
-        <td><span class="status-badge ${a.status}">${{pending:'대기중',approved:'승인',rejected:'반려'}[a.status]||a.status}</span></td>
+        <td>
+            <span class="status-badge ${a.status}">${{pending:'대기중',approved:'승인',rejected:'반려'}[a.status]||a.status}</span>
+            ${memberExists ? '<span class="status-badge approved" style="font-size:11px;margin-left:4px;">회원</span>' : ''}
+        </td>
         <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.note||'-'}</td>
         <td>
             ${a.status==='pending'?`<button class="action-btn approve" onclick="updateAppStatus(${a.id},'approved')">승인</button><button class="action-btn reject" onclick="updateAppStatus(${a.id},'rejected')">반려</button>`:''}
+            ${a.status==='approved' && !memberExists ? `<button class="action-btn" onclick="openMemberModalFromApp(${a.id})" style="color:var(--green);border-color:var(--green);">&#128100; 회원등록</button>` : ''}
             <button class="action-btn delete" onclick="deleteApp(${a.id})">삭제</button>
         </td>
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
 }
 
 document.getElementById('appSearch')?.addEventListener('input', renderApplications);
@@ -1519,7 +1527,33 @@ document.getElementById('appFilter')?.addEventListener('change', renderApplicati
 function getMembers() { return DB.get('members', []); }
 function setMembers(m) { DB.set('members', m); }
 
+// 회원 중복 확인
+function findMember(email, name, phone) {
+    return getMembers().find(m =>
+        (email && m.email && m.email === email) ||
+        (name && phone && m.name === name && m.phone === phone)
+    );
+}
+
+// 접수 → 회원 등록 모달 열기
+function openMemberModalFromApp(appId) {
+    const app = getApplications().find(a => a.id === appId);
+    if (!app) return;
+    if (findMember(app.email, app.name, app.phone)) {
+        showToast('이미 등록된 회원입니다.', true); return;
+    }
+    document.getElementById('memName').value = app.name || '';
+    document.getElementById('memPhone').value = app.phone || '';
+    document.getElementById('memEmail').value = app.email || '';
+    document.getElementById('memCert').value = app.cert || '';
+    document.getElementById('memCertNo').value = '';
+    document.getElementById('memAppId').value = appId;
+    openModal('memberModal');
+}
+
 function saveMember() {
+    const appIdVal = document.getElementById('memAppId').value;
+    const fromAppId = appIdVal ? parseInt(appIdVal) : null;
     const mem = {
         id: Date.now(),
         name: document.getElementById('memName').value,
@@ -1528,7 +1562,8 @@ function saveMember() {
         cert: document.getElementById('memCert').value,
         certNo: document.getElementById('memCertNo').value,
         date: new Date().toISOString().slice(0, 10),
-        status: 'active'
+        status: 'active',
+        fromAppId: fromAppId
     };
     if (!mem.name) { showToast('이름을 입력하세요.', true); return; }
     const members = getMembers();
@@ -1539,7 +1574,9 @@ function saveMember() {
     document.getElementById('memPhone').value = '';
     document.getElementById('memEmail').value = '';
     document.getElementById('memCertNo').value = '';
+    document.getElementById('memAppId').value = '';
     renderMembers();
+    renderApplications();
     refreshDashboard();
     showToast('회원이 등록되었습니다.');
 }
@@ -1567,7 +1604,8 @@ function renderMembers() {
         return;
     }
     tbody.innerHTML = filtered.map(m => `<tr>
-        <td><strong>${m.name}</strong></td><td>${m.email||'-'}</td><td>${m.phone||'-'}</td><td>${m.date}</td>
+        <td><strong>${m.name}</strong>${m.fromAppId ? ' <span class="status-badge approved" style="font-size:10px;padding:2px 6px;">접수</span>' : ''}</td>
+        <td>${m.email||'-'}</td><td>${m.phone||'-'}</td><td>${m.date}</td>
         <td>${m.cert||'-'}</td>
         <td>${m.certNo||'-'}</td>
         <td><span class="status-badge ${m.status}">${m.status==='active'?'활성':'비활성'}</span></td>
