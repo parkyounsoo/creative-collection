@@ -857,7 +857,7 @@ STEAM 교육 협회</textarea></div>
             <div class="admin-card">
                 <h3>&#128203; 자격증 접수 목록 <span class="card-badge" id="appCount">0건</span></h3>
                 <table class="admin-table">
-                    <thead><tr><th>이름</th><th>연락처</th><th>이메일</th><th>자격증</th><th>접수일</th><th>상태</th><th>비고</th><th>관리</th></tr></thead>
+                    <thead><tr><th>이름</th><th>연락처</th><th>이메일</th><th>자격증</th><th>접수일</th><th>상태</th><th>입금</th><th>관리</th></tr></thead>
                     <tbody id="appTableBody">
                         <tr><td colspan="8"><div class="empty-state"><div class="icon">&#128203;</div><p>접수 내역이 없습니다.</p></div></td></tr>
                     </tbody>
@@ -1556,9 +1556,15 @@ function renderApplications() {
         <td>
             <span class="status-badge ${a.status}">${{pending:'대기중',approved:'승인',rejected:'반려'}[a.status]||a.status}</span>
         </td>
-        <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.note||'-'}</td>
         <td>
-            ${a.status==='pending'?`<button class="action-btn approve" onclick="updateAppStatus(${a.id},'approved')">승인</button><button class="action-btn reject" onclick="updateAppStatus(${a.id},'rejected')">반려</button>`:''}
+            <button class="action-btn" onclick="togglePayment(${a.id})"
+                style="${a.payment==='paid' ? 'color:var(--green);border-color:var(--green);background:rgba(0,200,100,0.08);' : 'color:#aaa;border-color:#aaa;'}">
+                ${a.payment==='paid' ? '&#10003; 입금' : '미입금'}
+            </button>
+        </td>
+        <td>
+            ${a.status==='pending' ? `<button class="action-btn approve" onclick="updateAppStatus(${a.id},'approved')">승인</button><button class="action-btn reject" onclick="updateAppStatus(${a.id},'rejected')">반려</button>` : ''}
+            ${a.status!=='pending' ? `<button class="action-btn" onclick="updateAppStatus(${a.id},'pending')" style="color:var(--text-muted,#888);border-color:var(--text-muted,#888);">취소</button>` : ''}
             ${a.status==='approved' && !memberExists ? `<button class="action-btn" onclick="openMemberModalFromApp(${a.id})" style="color:var(--green);border-color:var(--green);">&#128100; 회원등록</button>` : ''}
             <button class="action-btn delete" onclick="deleteApp(${a.id})">삭제</button>
         </td>
