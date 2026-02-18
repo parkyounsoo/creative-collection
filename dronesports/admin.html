@@ -1271,7 +1271,7 @@ const panelTitles = {
 
 const panelActions = {
     applications: '<button class="header-btn" onclick="exportApplicationsCSV()">&#11015; 내보내기</button><button class="header-btn primary" onclick="openAppModal()">+ 접수 등록</button>',
-    members: '<button class="header-btn primary" onclick="openModal(\'memberModal\')">+ 회원 등록</button>',
+    members: '<button class="header-btn" onclick="exportMembersCSV()">&#11015; 내보내기</button><button class="header-btn primary" onclick="openModal(\'memberModal\')">+ 회원 등록</button>',
     notices: '<button class="header-btn primary" onclick="openModal(\'noticeModal\')">+ 공지 작성</button>',
     about: '<button class="header-btn primary" onclick="saveContent(\'about\')">저장</button>',
     chairman: '<button class="header-btn primary" onclick="saveContent(\'chairman\')">저장</button>',
@@ -1418,22 +1418,48 @@ function downloadCSVTemplate() {
     a.click();
 }
 
-// 데이터 내보내기
-function exportApplicationsCSV() {
-    const apps = getApplications();
-    if (!apps.length) { showToast('내보낼 데이터가 없습니다.', true); return; }
-    const statusLabel = { pending: '대기중', approved: '승인', rejected: '반려' };
-    const header = '이름,연락처,이메일,자격증,접수일,상태,비고';
-    const rows = apps.map(a =>
-        [a.name, a.phone, a.email, a.cert, a.date, statusLabel[a.status] || a.status, a.note]
-        .map(v => `"${(v || '').replace(/"/g, '""')}"`).join(',')
-    );
+// 데이터 내보내기 공통 함수
+function downloadCSV(filename, header, rows) {
     const csv = '\uFEFF' + header + '\n' + rows.join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `자격증접수_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = filename;
     a.click();
+}
+
+// 자격증 접수 내보내기
+function exportApplicationsCSV() {
+    const apps = getApplications();
+    if (!apps.length) { showToast('내보낼 데이터가 없습니다.', true); return; }
+    const statusLabel = { pending: '대기중', approved: '승인', rejected: '반려' };
+    const payLabel = { paid: '입금완료', unpaid: '미입금' };
+    const header = '이름,연락처,이메일,자격증,접수일,상태,입금여부,출처';
+    const rows = apps.map(a =>
+        [a.name, a.phone, a.email, a.cert, a.date,
+         statusLabel[a.status] || a.status,
+         payLabel[a.payment] || '미입금',
+         a.fromMemberId ? '회원접수' : '일반접수']
+        .map(v => `"${(v || '').replace(/"/g, '""')}"`).join(',')
+    );
+    downloadCSV(`자격증접수_${new Date().toISOString().slice(0,10)}.csv`, header, rows);
+    showToast(`${apps.length}건을 내보냈습니다.`);
+}
+
+// 회원 목록 내보내기
+function exportMembersCSV() {
+    const members = getMembers();
+    if (!members.length) { showToast('내보낼 회원 데이터가 없습니다.', true); return; }
+    const header = '이름,이메일,연락처,등록일,자격증,자격증번호,상태,출처';
+    const rows = members.map(m =>
+        [m.name, m.email, m.phone, m.date,
+         m.cert, m.certNo,
+         m.status === 'active' ? '활성' : '비활성',
+         m.fromAppId ? '접수등록' : '직접등록']
+        .map(v => `"${(v || '').replace(/"/g, '""')}"`).join(',')
+    );
+    downloadCSV(`회원목록_${new Date().toISOString().slice(0,10)}.csv`, header, rows);
+    showToast(`${members.length}명을 내보냈습니다.`);
 }
 
 function openAppModal() {
