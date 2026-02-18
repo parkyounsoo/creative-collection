@@ -1033,6 +1033,7 @@ STEAM 교육 협회</textarea></div>
             </select>
         </div>
         -->
+        <input type="hidden" id="appMemberId" value="">
         <div class="modal-actions">
             <button class="header-btn" onclick="closeModal('appModal')">취소</button>
             <button class="header-btn primary" onclick="saveApplication()">접수 등록</button>
@@ -1416,8 +1417,46 @@ function exportApplicationsCSV() {
 }
 
 function openAppModal() {
+    document.getElementById('appName').value = '';
+    document.getElementById('appPhone').value = '';
+    document.getElementById('appEmail').value = '';
+    document.getElementById('appNote').value = '';
     document.getElementById('appDate').value = new Date().toISOString().slice(0, 10);
     document.getElementById('appStatus').value = 'pending';
+    document.getElementById('appMemberId').value = '';
+    openModal('appModal');
+}
+
+// 접수 중복 확인
+function findApplication(email, name, phone) {
+    return getApplications().find(a =>
+        (email && a.email && a.email === email) ||
+        (name && phone && a.name === name && a.phone === phone)
+    );
+}
+
+// 회원 → 자격증 접수 모달 열기
+function openAppModalFromMember(memberId) {
+    const member = getMembers().find(m => m.id === memberId);
+    if (!member) return;
+    if (findApplication(member.email, member.name, member.phone)) {
+        showToast('이미 접수된 회원입니다.', true); return;
+    }
+    document.getElementById('appName').value = member.name || '';
+    document.getElementById('appPhone').value = member.phone || '';
+    document.getElementById('appEmail').value = member.email || '';
+    document.getElementById('appNote').value = '';
+    if (member.cert) {
+        const certSelect = document.getElementById('appCert');
+        for (let i = 0; i < certSelect.options.length; i++) {
+            if (certSelect.options[i].text === member.cert) {
+                certSelect.selectedIndex = i; break;
+            }
+        }
+    }
+    document.getElementById('appDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('appStatus').value = 'pending';
+    document.getElementById('appMemberId').value = memberId;
     openModal('appModal');
 }
 
@@ -1428,6 +1467,8 @@ function updateBadge() {
 }
 
 function saveApplication() {
+    const memberIdVal = document.getElementById('appMemberId').value;
+    const fromMemberId = memberIdVal ? parseInt(memberIdVal) : null;
     const app = {
         id: Date.now(),
         name: document.getElementById('appName').value,
@@ -1437,7 +1478,8 @@ function saveApplication() {
         note: document.getElementById('appNote').value,
         payment: 'unpaid',
         date: document.getElementById('appDate').value || new Date().toISOString().slice(0, 10),
-        status: document.getElementById('appStatus').value || 'pending'
+        status: document.getElementById('appStatus').value || 'pending',
+        fromMemberId: fromMemberId
     };
     if (!app.name || !app.cert) { showToast('이름과 자격증을 입력하세요.', true); return; }
     const apps = getApplications();
@@ -1450,7 +1492,9 @@ function saveApplication() {
     document.getElementById('appNote').value = '';
     document.getElementById('appDate').value = '';
     document.getElementById('appStatus').value = 'pending';
+    document.getElementById('appMemberId').value = '';
     renderApplications();
+    renderMembers();
     updateBadge();
     refreshDashboard();
     showToast('접수가 등록되었습니다.');
@@ -1501,14 +1545,16 @@ function renderApplications() {
     tbody.innerHTML = filtered.map(a => {
         const memberExists = findMember(a.email, a.name, a.phone);
         return `<tr>
-        <td><strong>${a.name}</strong></td>
+        <td>
+            <strong>${a.name}</strong>
+            ${a.fromMemberId ? ' <span class="status-badge approved" style="font-size:10px;padding:2px 6px;">회원</span>' : ''}
+        </td>
         <td>${a.phone||'-'}</td>
         <td>${a.email||'-'}</td>
         <td style="font-size:12px;">${a.cert}</td>
         <td>${a.date}</td>
         <td>
             <span class="status-badge ${a.status}">${{pending:'대기중',approved:'승인',rejected:'반려'}[a.status]||a.status}</span>
-            ${memberExists ? '<span class="status-badge approved" style="font-size:11px;margin-left:4px;">회원</span>' : ''}
         </td>
         <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.note||'-'}</td>
         <td>
@@ -1603,14 +1649,21 @@ function renderMembers() {
         tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">&#128101;</div><p>등록된 회원이 없습니다.</p></div></td></tr>';
         return;
     }
-    tbody.innerHTML = filtered.map(m => `<tr>
+    tbody.innerHTML = filtered.map(m => {
+        const appExists = findApplication(m.email, m.name, m.phone);
+        return `<tr>
         <td><strong>${m.name}</strong>${m.fromAppId ? ' <span class="status-badge approved" style="font-size:10px;padding:2px 6px;">접수</span>' : ''}</td>
         <td>${m.email||'-'}</td><td>${m.phone||'-'}</td><td>${m.date}</td>
         <td>${m.cert||'-'}</td>
         <td>${m.certNo||'-'}</td>
         <td><span class="status-badge ${m.status}">${m.status==='active'?'활성':'비활성'}</span></td>
-        <td>${m.cert?`<button class="action-btn" onclick="printCert(${m.id})" style="color:var(--blue);border-color:var(--blue);">&#128438; 인쇄</button>`:''}<button class="action-btn delete" onclick="deleteMember(${m.id})">삭제</button></td>
-    </tr>`).join('');
+        <td>
+            ${!appExists ? `<button class="action-btn" onclick="openAppModalFromMember(${m.id})" style="color:var(--gold);border-color:var(--gold);">&#128203; 접수등록</button>` : '<span class="status-badge pending" style="font-size:10px;padding:2px 6px;">접수중</span>'}
+            ${m.cert?`<button class="action-btn" onclick="printCert(${m.id})" style="color:var(--blue);border-color:var(--blue);">&#128438; 인쇄</button>`:''}
+            <button class="action-btn delete" onclick="deleteMember(${m.id})">삭제</button>
+        </td>
+    </tr>`;
+    }).join('');
 }
 
 document.getElementById('memberSearch')?.addEventListener('input', renderMembers);
