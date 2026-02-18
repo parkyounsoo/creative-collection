@@ -3741,35 +3741,66 @@
         loadNotices();
     });
 
-    function loadNotices() {
-        try {
-            const notices = JSON.parse(localStorage.getItem('kydsa_notices') || '[]');
-            const section = document.getElementById('notices');
-            const navItem = document.getElementById('nav-notices-item');
-            const container = document.getElementById('noticeListMain');
-            if (!notices.length) {
-                section.style.display = 'none';
-                navItem.style.display = 'none';
-                return;
-            }
-            section.style.display = '';
-            navItem.style.display = '';
-            const typeLabel = { notice: '공지', event: '이벤트', news: '뉴스' };
-            container.innerHTML = notices.map(n => `
-                <div class="notice-item fade-in">
-                    <div class="notice-meta">
-                        <span class="notice-badge ${n.type || 'notice'}">${typeLabel[n.type] || '공지'}</span>
-                        <span class="notice-date">${n.date || ''}</span>
-                    </div>
-                    <h4 class="notice-title">${n.title || ''}</h4>
-                    ${n.content ? `<p class="notice-content">${n.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>` : ''}
+    function renderNoticeList(notices) {
+        const section = document.getElementById('notices');
+        const navItem = document.getElementById('nav-notices-item');
+        const container = document.getElementById('noticeListMain');
+        if (!notices.length) {
+            section.style.display = 'none';
+            navItem.style.display = 'none';
+            return;
+        }
+        section.style.display = '';
+        navItem.style.display = '';
+        const typeLabel = { notice: '공지', event: '이벤트', news: '뉴스' };
+        container.innerHTML = notices.map(n => `
+            <div class="notice-item fade-in">
+                <div class="notice-meta">
+                    <span class="notice-badge ${n.type || 'notice'}">${typeLabel[n.type] || '공지'}</span>
+                    <span class="notice-date">${n.date || ''}</span>
                 </div>
-            `).join('');
-            // 새로 추가된 fade-in 요소도 관찰 등록
-            container.querySelectorAll('.fade-in').forEach(el => {
-                if (typeof observer !== 'undefined') observer.observe(el);
+                <h4 class="notice-title">${(n.title||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</h4>
+                ${n.content ? `<p class="notice-content">${n.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>` : ''}
+            </div>
+        `).join('');
+        container.querySelectorAll('.fade-in').forEach(el => {
+            if (typeof observer !== 'undefined') observer.observe(el);
+        });
+    }
+
+    function loadNotices() {
+        // Firestore에서 읽기 시도, 실패 시 localStorage fallback
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyB7le1awZES3gipqwdB7N10piVC6In_Crc",
+            authDomain: "kydsa-drone.firebaseapp.com",
+            projectId: "kydsa-drone",
+            storageBucket: "kydsa-drone.firebasestorage.app",
+            messagingSenderId: "886061583737",
+            appId: "1:886061583737:web:df0261a522f3c66194f3a8"
+        };
+        const appSrc = 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js';
+        const fsSrc  = 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js';
+        function loadScript(src) {
+            return new Promise((res, rej) => {
+                const s = document.createElement('script');
+                s.src = src; s.onload = res; s.onerror = rej;
+                document.head.appendChild(s);
             });
-        } catch(e) {}
+        }
+        loadScript(appSrc).then(() => loadScript(fsSrc)).then(() => {
+            if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+            const db = firebase.firestore();
+            return db.collection('notices').orderBy('id', 'desc').get();
+        }).then(snap => {
+            const notices = snap.docs.map(d => d.data());
+            renderNoticeList(notices);
+        }).catch(() => {
+            // Firestore 실패 시 localStorage fallback
+            try {
+                const notices = JSON.parse(localStorage.getItem('kydsa_notices') || '[]');
+                renderNoticeList(notices);
+            } catch(e) {}
+        });
     }
 
     // Scroll animation

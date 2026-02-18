@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 공지사항: 누구나 읽기 가능, 쓰기는 허용 (관리자 페이지에서만 접근)
+    match /notices/{noticeId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

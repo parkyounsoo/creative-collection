@@ -1803,35 +1803,77 @@ function renderMembers() {
 
 document.getElementById('memberSearch')?.addEventListener('input', renderMembers);
 
-// ========== Notices ==========
+// ========== Notices (Firestore 연동) ==========
+let _db = null; // Firestore 인스턴스
+
 function getNotices() { return DB.get('notices', []); }
 function setNotices(n) { DB.set('notices', n); }
 
-function saveNotice() {
+// Firestore 초기화 후 공지사항 로드
+async function initNoticesFirestore(db) {
+    _db = db;
+    await syncNoticesFromFirestore();
+}
+
+// Firestore → localStorage 동기화 후 렌더링
+async function syncNoticesFromFirestore() {
+    if (!_db) return;
+    try {
+        const snap = await _db.collection('notices').orderBy('id', 'desc').get();
+        const notices = snap.docs.map(doc => ({ _docId: doc.id, ...doc.data() }));
+        setNotices(notices);
+        renderNotices();
+        refreshDashboard();
+    } catch(e) {
+        console.warn('Firestore 공지 로드 실패, localStorage 사용:', e.message);
+    }
+}
+
+async function saveNotice() {
+    const title = document.getElementById('noticeTitle').value.trim();
+    if (!title) { showToast('제목을 입력하세요.', true); return; }
     const notice = {
         id: Date.now(),
         type: document.getElementById('noticeType').value,
-        title: document.getElementById('noticeTitle').value,
-        content: document.getElementById('noticeContent').value,
+        title: title,
+        content: document.getElementById('noticeContent').value.trim(),
         date: new Date().toISOString().slice(0, 10)
     };
-    if (!notice.title) { showToast('제목을 입력하세요.', true); return; }
-    const notices = getNotices();
-    notices.unshift(notice);
-    setNotices(notices);
+    if (_db) {
+        try {
+            await _db.collection('notices').add(notice);
+            await syncNoticesFromFirestore();
+        } catch(e) {
+            showToast('저장 실패: ' + e.message, true); return;
+        }
+    } else {
+        const notices = getNotices();
+        notices.unshift(notice);
+        setNotices(notices);
+        renderNotices();
+    }
     closeModal('noticeModal');
     document.getElementById('noticeTitle').value = '';
     document.getElementById('noticeContent').value = '';
-    renderNotices();
     refreshDashboard();
     showToast('공지사항이 등록되었습니다.');
 }
 
-function deleteNotice(id) {
-    let notices = getNotices();
-    notices = notices.filter(n => n.id !== id);
-    setNotices(notices);
-    renderNotices();
+async function deleteNotice(id) {
+    if (_db) {
+        try {
+            const snap = await _db.collection('notices').where('id', '==', id).get();
+            await Promise.all(snap.docs.map(d => d.ref.delete()));
+            await syncNoticesFromFirestore();
+        } catch(e) {
+            showToast('삭제 실패: ' + e.message, true); return;
+        }
+    } else {
+        let notices = getNotices();
+        notices = notices.filter(n => n.id !== id);
+        setNotices(notices);
+        renderNotices();
+    }
     refreshDashboard();
     showToast('공지사항이 삭제되었습니다.');
 }
@@ -1845,7 +1887,7 @@ function renderNotices() {
         return;
     }
     list.innerHTML = notices.map(n => `<div class="notice-item">
-        <span class="n-type ${n.type}">${{notice:'공지',event:'이벤트',urgent:'긴급'}[n.type]}</span>
+        <span class="n-type ${n.type}">${{notice:'공지',event:'이벤트',urgent:'긴급'}[n.type]||'공지'}</span>
         <span class="n-title">${n.title}</span>
         <span class="n-date">${n.date}</span>
         <button class="action-btn delete" onclick="deleteNotice(${n.id})">삭제</button>
@@ -1903,6 +1945,11 @@ renderNotices();
         appId: "1:886061583737:web:df0261a522f3c66194f3a8"
     };
     await loadFirebase(config);
+    // Firestore 초기화 및 공지사항 동기화
+    if (typeof firebase !== 'undefined' && firebase.apps.length) {
+        const db = firebase.firestore();
+        await initNoticesFirestore(db);
+    }
 })();
 </script>
 </body>
