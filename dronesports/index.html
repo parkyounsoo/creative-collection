@@ -1963,6 +1963,22 @@
             white-space: pre-line;
             margin: 0;
         }
+        .notice-link {
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent, #5b8def);
+            text-decoration: none;
+            border: 1px solid var(--accent, #5b8def);
+            border-radius: 20px;
+            padding: 4px 14px;
+            transition: background .2s, color .2s;
+        }
+        .notice-link:hover {
+            background: var(--accent, #5b8def);
+            color: #fff;
+        }
         .notice-empty {
             text-align: center;
             color: var(--text-muted, #888);
@@ -3761,6 +3777,7 @@
                 </div>
                 <h4 class="notice-title">${(n.title||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</h4>
                 ${n.content ? `<p class="notice-content">${n.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>` : ''}
+                ${n.link ? `<a href="${n.link}" target="_blank" rel="noopener" class="notice-link">&#128279; 자세히 보기</a>` : ''}
             </div>
         `).join('');
         container.querySelectorAll('.fade-in').forEach(el => {

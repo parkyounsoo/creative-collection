@@ -977,6 +977,10 @@ STEAM 교육 협회</textarea></div>
         </div>
         <div class="form-group"><label>제목</label><input id="noticeTitle" placeholder="공지사항 제목"></div>
         <div class="form-group"><label>내용</label><textarea id="noticeContent" placeholder="공지사항 내용을 입력하세요..."></textarea></div>
+        <div class="form-group">
+            <label>링크 URL <span style="font-size:11px;color:var(--text-muted,#888);">(선택사항 — 뉴스·외부 링크)</span></label>
+            <input id="noticeLink" placeholder="https://example.com" type="url">
+        </div>
         <div class="modal-actions">
             <button class="header-btn" onclick="closeModal('noticeModal')">취소</button>
             <button class="header-btn primary" onclick="saveNotice()">저장</button>
@@ -1832,11 +1836,13 @@ async function syncNoticesFromFirestore() {
 async function saveNotice() {
     const title = document.getElementById('noticeTitle').value.trim();
     if (!title) { showToast('제목을 입력하세요.', true); return; }
+    const link = document.getElementById('noticeLink').value.trim();
     const notice = {
         id: Date.now(),
         type: document.getElementById('noticeType').value,
         title: title,
         content: document.getElementById('noticeContent').value.trim(),
+        link: link || '',
         date: new Date().toISOString().slice(0, 10)
     };
     if (_db) {
@@ -1855,6 +1861,7 @@ async function saveNotice() {
     closeModal('noticeModal');
     document.getElementById('noticeTitle').value = '';
     document.getElementById('noticeContent').value = '';
+    document.getElementById('noticeLink').value = '';
     refreshDashboard();
     showToast('공지사항이 등록되었습니다.');
 }
@@ -1889,6 +1896,7 @@ function renderNotices() {
     list.innerHTML = notices.map(n => `<div class="notice-item">
         <span class="n-type ${n.type}">${{notice:'공지',event:'이벤트',urgent:'긴급'}[n.type]||'공지'}</span>
         <span class="n-title">${n.title}</span>
+        ${n.link ? `<a href="${n.link}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);margin-left:6px;text-decoration:none;" title="${n.link}">&#128279; 링크</a>` : ''}
         <span class="n-date">${n.date}</span>
         <button class="action-btn delete" onclick="deleteNotice(${n.id})">삭제</button>
     </div>`).join('');
